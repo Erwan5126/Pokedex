@@ -60,6 +60,10 @@ header{position:sticky;top:0;z-index:100;background:rgba(11,15,36,.88);backdrop-
 .gen small{display:block;color:var(--mute);font-size:11px;font-weight:700;margin-top:2px}
 .gen .bar{height:3px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}
 .gen .bar i{display:block;height:100%;background:var(--green)}
+.gen .bar.gold{margin-top:3px}
+.gen .bar.gold i{background:var(--gold)}
+.gen small b{color:var(--gold)}
+.pill.full b{color:var(--gold)}
 .gen.on{border-color:var(--accent);background:linear-gradient(180deg,#2a2370,var(--card))}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 8px;align-items:center}
 .search{flex:1 1 220px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;color:var(--text);font:inherit;font-size:16px;min-width:0}
@@ -239,7 +243,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.3";
+const APP_V = "1.4";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -427,19 +431,33 @@ function tracked(filter){
   for(const sp of S.species){ if(filter && !filter(sp)) continue; for(const e of sp.f) if(isTracked(e)) out.push(e); }
   return out;
 }
+function spTally(filter){
+  let n = 0, any = 0, all = 0;
+  for(const sp of S.species){
+    if(filter && !filter(sp)) continue;
+    n++;
+    const l = sp.f.filter(isTracked);
+    const c = l.filter(e => (S.prog[e.key] || {}).c).length;
+    if(c) any++;
+    if(c && c === l.length) all++;
+  }
+  return {n, any, all};
+}
 function renderPills(){
-  const t = tally(tracked());
+  const st = spTally(), t = tally(tracked());
   $('#pills').innerHTML =
-    `<span class="pill"><span class="lb">Capturés </span><b>${t.c}</b>/${t.n} · ${pct(t.c, t.n)}%</span>` +
+    `<span class="pill"><span class="lb">Capturés </span><b>${st.any}</b>/${st.n} · ${pct(st.any, st.n)}%</span>` +
+    `<span class="pill full"><span class="lb">Complets </span>★ <b>${st.all}</b></span>` +
     `<span class="pill s">✨ <b>${t.s}</b></span><span class="pill iv">IV <b>${t.iv}</b></span><span class="pill h">HOME <b>${t.h}</b></span>`;
 }
+function genBtn(g, label, t){
+  return `<button class="gen ${S.view.gen === g ? 'on' : ''}" data-g="${g}"><div class="gl">${label}</div><small>${t.any}/${t.n} · <b>★ ${t.all}</b></small>` +
+    `<div class="bar" title="Au moins une forme capturée"><i style="width:${pct(t.any, t.n)}%"></i></div>` +
+    `<div class="bar gold" title="Toutes les formes capturées"><i style="width:${pct(t.all, t.n)}%"></i></div></button>`;
+}
 function renderGens(){
-  const all = tally(tracked());
-  let h = `<button class="gen ${S.view.gen === 0 ? 'on' : ''}" data-g="0"><div class="gl">Tous</div><small>${all.c}/${all.n}</small><div class="bar"><i style="width:${pct(all.c, all.n)}%"></i></div></button>`;
-  for(const g of S.gens){
-    const t = tally(tracked(sp => sp.g === g));
-    h += `<button class="gen ${S.view.gen === g ? 'on' : ''}" data-g="${g}"><div class="gl">Gen ${g} · ${GEN[g] || ''}</div><small>${t.c}/${t.n}</small><div class="bar"><i style="width:${pct(t.c, t.n)}%"></i></div></button>`;
-  }
+  let h = genBtn(0, 'Tous', spTally());
+  for(const g of S.gens) h += genBtn(g, `Gen ${g} · ${GEN[g] || ''}`, spTally(sp => sp.g === g));
   $('#gens').innerHTML = h;
 }
 function buildStatic(){
@@ -464,7 +482,7 @@ function statusOk(sp){
   const any = f => l.some(e => (S.prog[e.key] || {})[f]);
   switch(S.view.status){
     case 'miss': return some('c');
-    case 'c': return !!pb.c;
+    case 'c': return any('c');
     case 'nos': return some('s');
     case 's': return any('s');
     case 'noiv': return some('iv');
@@ -497,7 +515,7 @@ function cardHtml(sp){
   for(const e of l){ const p = S.prog[e.key] || {}; if(p.c) c++; if(p.s) s++; if(p.iv) iv++; if(p.h) hm++; }
   const g = pb.g && gameById(pb.g);
   const avon = S.adminMode && S.avEdit && S.avail[S.avEdit] && S.avail[S.avEdit].has(sp.i);
-  return `<div class="card${pb.c ? ' got' : ''}${s ? ' sh' : ''}${l.length > 1 && c === l.length ? ' full' : ''}${avon ? ' avon' : ''}" data-s="${sp.i}">` +
+  return `<div class="card${c ? ' got' : ''}${s ? ' sh' : ''}${l.length > 1 && c === l.length ? ' full' : ''}${avon ? ' avon' : ''}" data-s="${sp.i}">` +
     (l.length > 1 ? `<span class="fp" title="Formes capturées">${c}/${l.length}</span>` : '') +
     `<button class="qc" aria-label="Capturé">✓</button>` +
     `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(base, false)}" data-fb="${artUrl(base, false)}" onerror="${FB}" alt="">` +
@@ -517,8 +535,8 @@ function renderGrid(){
   }
   const list = visibleSpecies();
   S.lastVisible = list;
-  const got = list.filter(sp => (S.prog[sp.f[0].key] || {}).c).length;
-  $('#count').textContent = `${list.length} Pokémon · ${got} capturé${got > 1 ? 's' : ''}`;
+  const vs = new Set(list.map(sp => sp.i)), st = spTally(sp => vs.has(sp.i));
+  $('#count').textContent = `${list.length} Pokémon · ${st.any} capturé${st.any > 1 ? 's' : ''} · ★ ${st.all} complet${st.all > 1 ? 's' : ''}`;
   const ag = S.adminMode && S.avEdit ? gameById(S.avEdit) : null;
   $('#grid').classList.toggle('avedit', !!ag);
   $('#grid').style.setProperty('--gc', ag ? ag.c : '');
@@ -893,11 +911,12 @@ function saveGameForm(){
 function srow(label, a, b, color){ return `<div class="srow"><span>${label}</span><div class="sbar"><i style="width:${pct(a, b)}%;${color ? 'background:' + color : ''}"></i></div><span style="text-align:right">${a}/${b}</span></div>`; }
 function openStats(){ openModal(renderStats); }
 function renderStats(){
-  const all = tracked(), t = tally(all);
+  const all = tracked(), t = tally(all), st = spTally();
   let h = mhead('Statistiques');
-  h += `<div class="big4" style="margin-top:12px"><div><b>${pct(t.c, t.n)}%</b><small>${t.c}/${t.n} capturés</small></div><div><b style="color:var(--gold)">${t.s}</b><small>shiny</small></div><div><b style="color:var(--cyan)">${t.iv}</b><small>IV parfaits</small></div><div><b style="color:var(--home)">${pct(t.h, t.n)}%</b><small>living dex HOME</small></div></div>`;
-  h += `<div class="sec">Par génération</div>`;
-  for(const g of S.gens){ const x = tally(tracked(sp => sp.g === g)); h += srow(`Gen ${g} · ${GEN[g] || ''}`, x.c, x.n); }
+  h += `<div class="big4" style="margin-top:12px"><div><b>${pct(st.any, st.n)}%</b><small>${st.any}/${st.n} Pokémon</small></div><div><b style="color:var(--gold)">${st.all}</b><small>complets ★</small></div><div><b style="color:var(--gold)">${t.s}</b><small>shiny</small></div><div><b style="color:var(--home)">${pct(t.h, t.n)}%</b><small>living dex HOME</small></div></div>`;
+  h += `<div class="sec">Par génération · <span style="color:var(--green)">au moins une forme</span> / <span style="color:var(--gold)">toutes les formes</span></div>`;
+  for(const g of S.gens){ const x = spTally(sp => sp.g === g); h += srow(`Gen ${g} · ${GEN[g] || ''}`, x.any, x.n) + srow('', x.all, x.n, 'var(--gold)'); }
+  h += `<div class="sec">Formes capturées (toutes formes suivies)</div>` + srow('Total', t.c, t.n, 'var(--accent)');
   h += `<div class="sec">Par type de forme</div>`;
   for(const k of Object.keys(KINDS)){ const l = all.filter(e => e.kind === k); if(l.length){ const x = tally(l); h += srow(KINDS[k], x.c, x.n, 'var(--accent)'); } }
   h += `<div class="sec">Shiny & HOME</div>` + srow('✨ Shiny', t.s, t.n, 'var(--gold)') + srow('IV 100%', t.iv, t.n, 'var(--cyan)') + srow('HOME', t.h, t.n, 'var(--home)');
