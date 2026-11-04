@@ -74,6 +74,8 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .card:active{transform:scale(.97)}
 .card img{width:80px;height:80px;object-fit:contain;image-rendering:pixelated;opacity:.35;filter:grayscale(1)}
 .card.got img{opacity:1;filter:none}
+.card .fp{position:absolute;top:8px;left:8px;font-size:9.5px;font-weight:800;color:var(--mute);background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:2px 5px}
+.card.full .fp{color:#06291b;background:var(--green);border-color:var(--green)}
 .card.got{background:linear-gradient(180deg,#1d2a5e,var(--card));border-color:rgba(61,220,151,.35)}
 .card.sh{border-color:rgba(255,209,102,.65);box-shadow:0 0 0 1px rgba(255,209,102,.25) inset}
 .num{font-size:9px;color:var(--mute);font-family:'Press Start 2P',monospace}
@@ -84,6 +86,12 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .bd .s{color:var(--gold)}.bd .iv{color:var(--cyan)}.bd .h{color:var(--home)}
 .qc{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--bg2);font-size:13px;font-weight:800;color:var(--mute);display:grid;place-items:center;padding:0}
 .card.got .qc{background:var(--green);border-color:var(--green);color:#06291b}
+.grid.avedit .card{opacity:.32;filter:saturate(.3)}
+.grid.avedit .card.avon{opacity:1;filter:none;border-color:var(--gc);box-shadow:0 0 0 2px var(--gc) inset}
+.grid.avedit .card img{opacity:1;filter:none}
+.grid.avedit .qc{display:none}
+.avbar{display:none;position:sticky;top:calc(var(--hh) + 44px);z-index:80;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 10px;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;font-weight:800}
+.avbar.show{display:flex}
 .empty{text-align:center;padding:60px 20px;color:var(--mute);font-weight:700}
 .empty .btn{margin-top:14px}
 
@@ -194,7 +202,8 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
     MODE ADMIN
     <button class="btn sm" id="aSync">⟳ Synchroniser PokéAPI</button>
     <button class="btn sm" id="aGames">🎮 Gérer les jeux</button>
-    <span class="mute" style="font-weight:700">Dans les fiches : dispo par jeu, masquer / renommer les formes</span>
+    <select id="aAv" style="padding:5px 8px;font-size:12px;border-radius:10px"></select>
+
   </div>
   <main class="wrap">
     <div class="gens" id="gens"></div>
@@ -202,10 +211,10 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
       <input class="search" id="q" type="search" placeholder="Nom (FR / EN) ou numéro…" autocomplete="off">
       <select id="fGame"></select>
       <select id="fType"></select>
-      <button class="chip" id="fForms">Formes</button>
     </div>
     <div class="chips" id="fStatus"></div>
     <div class="count" id="count"></div>
+    <div class="avbar" id="avbar"></div>
     <div class="grid" id="grid"></div>
     <div class="empty" id="empty" hidden></div>
   </main>
@@ -230,7 +239,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.0";
+const APP_V = "1.3";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -245,12 +254,12 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 const API = 'https://pokeapi.co/api/v2/';
 const SPR = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
 const GEN = {1:'Kanto',2:'Johto',3:'Hoenn',4:'Sinnoh',5:'Unys',6:'Kalos',7:'Alola',8:'Galar',9:'Paldea'};
-const KINDS = {base:'Base',regional:'Régionale',mega:'Méga',gmax:'Gigamax',alt:'Alternative',cosm:'Cosmétique'};
+const KINDS = {base:'Base',fem:'Femelle',regional:'Régionale',mega:'Méga',gmax:'Gigamax',alt:'Alternative',cosm:'Cosmétique'};
 const TYPES = ['normal','fighting','flying','poison','ground','rock','bug','ghost','steel','fire','water','grass','electric','psychic','ice','dragon','dark','fairy'];
 const TYPE_FR = ['Normal','Combat','Vol','Poison','Sol','Roche','Insecte','Spectre','Acier','Feu','Eau','Plante','Électrik','Psy','Glace','Dragon','Ténèbres','Fée'];
 const TYPE_C = ['#9fa19f','#ff8000','#81b9ef','#9141cb','#915121','#afa981','#91a119','#704170','#60a1b8','#e62829','#2980ef','#3fa129','#e0ad00','#ef4179','#3dcef3','#5060e1','#624d4e','#ef70ef'];
 const STATUS = [['all','Tous'],['miss','Manquants'],['c','Capturés'],['nos','Shiny manquants'],['s','Shiny'],['noiv','IV manquants'],['noh','Pas dans HOME']];
-const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true};
+const DEF_SET = {kinds:{fem:true,regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true};
 const DEFAULT_GAMES = [
   {id:'rby',n:'Rouge / Bleu / Jaune',a:'RBJ',c:'#e3350d',gen:1,vg:'red-blue,yellow'},
   {id:'gsc',n:'Or / Argent / Cristal',a:'OAC',c:'#c9a227',gen:2,vg:'gold-silver,crystal'},
@@ -296,14 +305,14 @@ const S = {
   games:[], avail:{}, ov:{hidden:{}, names:{}},
   prog:{}, settings:structuredClone(DEF_SET),
   view:{gen:0, q:'', status:'all', game:'', type:''},
-  lastVisible:[], sheetSid:null, sheetShiny:false, editGame:null
+  lastVisible:[], avEdit:'', sheetSid:null, sheetShiny:false, editGame:null
 };
 const ename = e => S.ov.names[e.key] || e.raw;
 const etypes = e => e.t || e.sp.f[0].t || [];
 const isTracked = e => e.kind === 'base' || (!S.ov.hidden[e.key] && !!S.settings.kinds[e.kind]);
 const gameById = id => S.games.find(g => g.id === id);
 const sprUrl = (e, shiny) => SPR + (shiny ? 'shiny/' : '') + e.spr + '.png';
-const artUrl = (e, shiny) => typeof e.spr === 'number' ? SPR + 'other/home/' + (shiny ? 'shiny/' : '') + e.spr + '.png' : sprUrl(e, shiny);
+const artUrl = (e, shiny) => (typeof e.spr === 'number' || String(e.spr).startsWith('female/')) ? SPR + 'other/home/' + (shiny ? 'shiny/' : '') + e.spr + '.png' : sprUrl(e, shiny);
 
 /* ---------- Firebase ---------- */
 const configured = !String(FIREBASE_CONFIG.apiKey).startsWith('À_');
@@ -439,25 +448,31 @@ function buildStatic(){
 }
 function renderFilters(){
   document.querySelectorAll('#fStatus .chip').forEach(b => b.classList.toggle('on', b.dataset.s === S.view.status));
-  $('#fForms').classList.toggle('on', !!S.settings.showForms);
   const cur = S.view.game;
   $('#fGame').innerHTML = '<option value="">Tous les jeux</option>' +
     S.games.filter(g => S.avail[g.id] && S.avail[g.id].size).map(g => `<option value="${g.id}" ${g.id === cur ? 'selected' : ''}>Dispo : ${esc(g.n)}</option>`).join('');
   if(cur && !$('#fGame').value) S.view.game = '';
+  if(S.isAdmin){
+    if(S.avEdit && !gameById(S.avEdit)) S.avEdit = '';
+    $('#aAv').innerHTML = '<option value="">✏️ Éditer la dispo par jeu…</option>' + S.games.map(g => `<option value="${g.id}" ${g.id === S.avEdit ? 'selected' : ''}>✏️ Dispo : ${esc(g.n)}</option>`).join('');
+  }
 }
-function statusOk(e){
-  const p = S.prog[e.key] || {};
+const spEntries = sp => sp.f.filter(isTracked);
+function statusOk(sp){
+  const l = spEntries(sp), pb = S.prog[sp.f[0].key] || {};
+  const some = f => l.some(e => !(S.prog[e.key] || {})[f]);
+  const any = f => l.some(e => (S.prog[e.key] || {})[f]);
   switch(S.view.status){
-    case 'miss': return !p.c;
-    case 'c': return !!p.c;
-    case 'nos': return !p.s;
-    case 's': return !!p.s;
-    case 'noiv': return !p.iv;
-    case 'noh': return !p.h;
+    case 'miss': return some('c');
+    case 'c': return !!pb.c;
+    case 'nos': return some('s');
+    case 's': return any('s');
+    case 'noiv': return some('iv');
+    case 'noh': return some('h');
     default: return true;
   }
 }
-function visibleEntries(){
+function visibleSpecies(){
   const q = norm(S.view.q.trim());
   const qn = /^#?\d+$/.test(q) ? +q.replace('#', '') : null;
   const av = S.view.game ? S.avail[S.view.game] : null;
@@ -467,25 +482,27 @@ function visibleEntries(){
     if(S.view.gen && sp.g !== S.view.gen) continue;
     if(av && !av.has(sp.i)) continue;
     if(qn !== null && sp.i !== qn) continue;
-    for(const e of sp.f){
-      if(e.kind !== 'base' && (!S.settings.showForms || !isTracked(e))) continue;
-      if(q && qn === null && !norm(ename(e)).includes(q) && !norm(sp.n).includes(q) && !sp.e.includes(q)) continue;
-      if(ty !== null && !etypes(e).includes(ty)) continue;
-      if(!statusOk(e)) continue;
-      out.push(e);
-    }
+    const l = spEntries(sp);
+    if(q && qn === null && !sp.e.includes(q) && !l.some(e => norm(ename(e)).includes(q))) continue;
+    if(ty !== null && !l.some(e => etypes(e).includes(ty))) continue;
+    if(!statusOk(sp)) continue;
+    out.push(sp);
   }
   return out;
 }
-function cardHtml(e){
-  const p = S.prog[e.key] || {};
-  const g = p.g && gameById(p.g);
-  return `<div class="card${p.c ? ' got' : ''}${p.s ? ' sh' : ''}" data-k="${esc(e.key)}">` +
+function cardHtml(sp){
+  const base = sp.f[0], l = spEntries(sp);
+  const pb = S.prog[base.key] || {};
+  let c = 0, s = 0, iv = 0, hm = 0;
+  for(const e of l){ const p = S.prog[e.key] || {}; if(p.c) c++; if(p.s) s++; if(p.iv) iv++; if(p.h) hm++; }
+  const g = pb.g && gameById(pb.g);
+  const avon = S.adminMode && S.avEdit && S.avail[S.avEdit] && S.avail[S.avEdit].has(sp.i);
+  return `<div class="card${pb.c ? ' got' : ''}${s ? ' sh' : ''}${l.length > 1 && c === l.length ? ' full' : ''}${avon ? ' avon' : ''}" data-s="${sp.i}">` +
+    (l.length > 1 ? `<span class="fp" title="Formes capturées">${c}/${l.length}</span>` : '') +
     `<button class="qc" aria-label="Capturé">✓</button>` +
-    `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(e, false)}" data-fb="${artUrl(e, false)}" onerror="${FB}" alt="">` +
-    `<div class="num">#${pad(e.sp.i)}</div><div class="nm">${esc(ename(e))}</div>` +
-    (e.kind !== 'base' ? `<div class="fk">${KINDS[e.kind] || ''}</div>` : '') +
-    `<div class="bd">${p.s ? '<span class="s">✨</span>' : ''}${p.iv ? '<span class="iv">IV</span>' : ''}${p.h ? '<span class="h">H</span>' : ''}${g ? `<span>${esc(g.a)}</span>` : ''}</div></div>`;
+    `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(base, false)}" data-fb="${artUrl(base, false)}" onerror="${FB}" alt="">` +
+    `<div class="num">#${pad(sp.i)}</div><div class="nm">${esc(sp.n)}</div>` +
+    `<div class="bd">${s ? `<span class="s">✨${s > 1 ? s : ''}</span>` : ''}${iv ? '<span class="iv">IV</span>' : ''}${hm ? '<span class="h">H</span>' : ''}${g ? `<span>${esc(g.a)}</span>` : ''}</div></div>`;
 }
 function renderGrid(){
   const empty = $('#empty');
@@ -498,18 +515,22 @@ function renderGrid(){
     const b = $('#eSync'); if(b) b.onclick = syncCatalog;
     return;
   }
-  const list = visibleEntries();
+  const list = visibleSpecies();
   S.lastVisible = list;
-  const t = tally(list);
-  $('#count').textContent = `${list.length} entrée${list.length > 1 ? 's' : ''} · ${t.c} capturée${t.c > 1 ? 's' : ''}`;
+  const got = list.filter(sp => (S.prog[sp.f[0].key] || {}).c).length;
+  $('#count').textContent = `${list.length} Pokémon · ${got} capturé${got > 1 ? 's' : ''}`;
+  const ag = S.adminMode && S.avEdit ? gameById(S.avEdit) : null;
+  $('#grid').classList.toggle('avedit', !!ag);
+  $('#grid').style.setProperty('--gc', ag ? ag.c : '');
   $('#grid').innerHTML = list.map(cardHtml).join('');
+  renderAvBar(ag, list);
   empty.hidden = list.length > 0;
   if(!list.length) empty.textContent = 'Aucun Pokémon ne correspond à ces filtres.';
 }
 function refreshCard(key){
   const e = S.byKey[key]; if(!e) return;
-  const el = document.querySelector(`.card[data-k="${CSS.escape(key)}"]`);
-  if(el) el.outerHTML = cardHtml(e);
+  const el = document.querySelector(`.card[data-s="${e.sp.i}"]`);
+  if(el) el.outerHTML = cardHtml(e.sp);
   renderPills(); renderGens();
 }
 
@@ -532,29 +553,59 @@ $('#fStatus').addEventListener('click', ev => { const b = ev.target.closest('.ch
 let qT; $('#q').addEventListener('input', ev => { clearTimeout(qT); qT = setTimeout(() => { S.view.q = ev.target.value; renderGrid(); }, 150); });
 $('#fGame').addEventListener('change', ev => { S.view.game = ev.target.value; renderGrid(); });
 $('#fType').addEventListener('change', ev => { S.view.type = ev.target.value; renderGrid(); });
-$('#fForms').addEventListener('click', () => { S.settings.showForms = !S.settings.showForms; saveSettings(); renderFilters(); renderGrid(); });
 $('#grid').addEventListener('click', ev => {
   const card = ev.target.closest('.card'); if(!card) return;
-  const e = S.byKey[card.dataset.k]; if(!e) return;
-  if(ev.target.closest('.qc')){
-    const p = S.prog[e.key] || {};
-    if(p.c && (p.s || p.iv || p.h || p.g) && !confirm(`Retirer ${ename(e)} de ta collection ? Shiny, IV, HOME et jeu seront effacés.`)) return;
-    setFlag(e.key, 'c', p.c ? 0 : 1);
+  const sp = S.bySid[+card.dataset.s]; if(!sp) return;
+  if(S.adminMode && S.avEdit){
+    const gid = S.avEdit;
+    toggleAvail(gid, sp.i);
+    card.classList.toggle('avon', S.avail[gid].has(sp.i));
+    renderAvBar(gameById(gid), S.lastVisible);
     return;
   }
-  openSheet(e.sp.i);
+  if(ev.target.closest('.qc')){
+    const base = sp.f[0], p = S.prog[base.key] || {};
+    if(p.c && (p.s || p.iv || p.h || p.g) && !confirm(`Retirer ${ename(base)} de ta collection ? Shiny, IV, HOME et jeu seront effacés.`)) return;
+    setFlag(base.key, 'c', p.c ? 0 : 1);
+    return;
+  }
+  openSheet(sp.i);
 });
 $('#bStats').onclick = openStats;
 $('#bSet').onclick = openSettings;
 $('#bAdmin').onclick = () => { S.adminMode = !S.adminMode; localStorage.setItem('pdx-admin', S.adminMode ? '1' : '0'); applyAdmin(); if(S.sheetSid) renderSheet(); };
 $('#aSync').onclick = syncCatalog;
 $('#aGames').onclick = openGames;
-function applyAdmin(){ $('#adminbar').classList.toggle('show', S.adminMode); $('#bAdmin').classList.toggle('on', S.adminMode); }
+function applyAdmin(){ $('#adminbar').classList.toggle('show', S.adminMode); $('#bAdmin').classList.toggle('on', S.adminMode); if(S.species.length) renderGrid(); }
+$('#aAv').addEventListener('change', ev => { S.avEdit = ev.target.value; renderGrid(); if(S.avEdit) toast('Touche une carte pour l\'ajouter ou la retirer de ce jeu'); });
+function renderAvBar(ag, list){
+  const bar = $('#avbar');
+  if(!ag){ bar.classList.remove('show'); bar.innerHTML = ''; return; }
+  const av = S.avail[ag.id] || new Set();
+  const sids = list.map(sp => sp.i);
+  const inView = sids.filter(s => av.has(s)).length;
+  bar.innerHTML = `<span class="dot" style="background:${ag.c}"></span><span style="flex:1 1 180px">${esc(ag.n)} · <span class="mute">${av.size} dispo au total · ${inView}/${sids.length} affichés</span></span>` +
+    `<button class="btn sm" data-av="all">Tout cocher (affichés)</button><button class="btn sm" data-av="none">Tout décocher (affichés)</button><button class="btn sm dan" data-av="quit">Terminer</button>`;
+  bar.classList.add('show');
+}
+$('#avbar').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-av]'); if(!b) return;
+  const gid = S.avEdit, g = gameById(gid); if(!g) return;
+  if(b.dataset.av === 'quit'){ S.avEdit = ''; renderFilters(); renderGrid(); return; }
+  const sids = S.lastVisible.map(sp => sp.i);
+  if(!sids.length) return;
+  const add = b.dataset.av === 'all';
+  if(!confirm(`${add ? 'Ajouter' : 'Retirer'} ${sids.length} espèces ${add ? 'à' : 'de'} « ${g.n} » ?`)) return;
+  if(!S.avail[gid]) S.avail[gid] = new Set();
+  sids.forEach(s => add ? S.avail[gid].add(s) : S.avail[gid].delete(s));
+  renderGrid();
+  await setDoc(doc(db, 'config', 'avail'), {[gid]: add ? arrayUnion(...sids) : arrayRemove(...sids)}, {merge:true}).catch(() => toast('Échec'));
+});
 new ResizeObserver(() => document.documentElement.style.setProperty('--hh', $('#hdr').offsetHeight + 'px')).observe($('#hdr'));
 
 /* ---------- Fiche détail ---------- */
 function typeChips(ts){ return ts.map(i => `<span class="type" style="background:${TYPE_C[i]}">${TYPE_FR[i]}</span>`).join(''); }
-function navList(){ const seen = new Set(), out = []; for(const e of S.lastVisible) if(!seen.has(e.sp.i)){ seen.add(e.sp.i); out.push(e.sp.i); } return out; }
+function navList(){ return S.lastVisible.map(sp => sp.i); }
 function openSheet(sid){ S.sheetSid = sid; renderSheet(); $('#ovSheet').classList.add('show'); $('#sheet').scrollTop = 0; document.body.style.overflow = 'hidden'; }
 function closeSheet(){ $('#ovSheet').classList.remove('show'); S.sheetSid = null; if(!$('#ovModal').classList.contains('show')) document.body.style.overflow = ''; renderGrid(); }
 function navSheet(d){ const l = navList(); const i = l.indexOf(S.sheetSid); const j = i + d; if(i < 0 || j < 0 || j >= l.length) return; S.sheetSid = l[j]; renderSheet(); $('#sheet').scrollTop = 0; }
@@ -636,7 +687,7 @@ async function toggleAvail(gid, sid){
   const on = S.avail[gid] && S.avail[gid].has(sid);
   if(!S.avail[gid]) S.avail[gid] = new Set();
   on ? S.avail[gid].delete(sid) : S.avail[gid].add(sid);
-  renderSheet();
+  if(S.sheetSid) renderSheet();
   await setDoc(doc(db, 'config', 'avail'), {[gid]: on ? arrayRemove(sid) : arrayUnion(sid)}, {merge:true}).catch(() => toast('Échec'));
 }
 
@@ -682,7 +733,7 @@ async function syncCatalog(){
     const list = await jget(API + 'pokemon-species?limit=2000');
     const species = (await pmap(list.results, 16, async r => {
       const s = await jget(r.url); if(!s) return null;
-      return {i:s.id, e:s.name, n:frName(s.names) || cap(s.name), g:idFromUrl(s.generation.url),
+      return {i:s.id, e:s.name, n:frName(s.names) || cap(s.name), g:idFromUrl(s.generation.url), gd:!!s.has_gender_differences,
         v:s.varieties.map(v => ({d:v.is_default, name:v.pokemon.name, url:v.pokemon.url}))};
     }, (d, n) => P.set('Espèces', d, n))).filter(Boolean);
 
@@ -706,6 +757,7 @@ async function syncCatalog(){
       const def = s.v.find(v => v.d && v.id) || s.v.find(v => v.id); if(!def) continue;
       const f = [{k:def.name, n:s.n, d:'base', s:def.id, t:def.t || []}];
       const seen = new Set([def.name]);
+      if(s.gd && !s.v.some(v => /-female$/.test(v.name))){ f[0].n = `${s.n} ♂`; f.push({k:def.name + '-f', n:`${s.n} ♀`, d:'fem', s:'female/' + def.id}); seen.add(def.name + '-f'); }
       for(const v of s.v){
         if(v === def || !v.id || seen.has(v.name)) continue; seen.add(v.name);
         const o = {k:v.name, n:v.fr || `${s.n} (${cap(v.name.replace(s.e + '-', ''))})`, d:kindOf(v.name), s:v.id};
@@ -762,6 +814,17 @@ $('#ovModal').addEventListener('click', ev => {
       await setDoc(doc(db, 'config', 'avail'), {[g.id]:deleteField()}, {merge:true});
     },
     gsave: saveGameForm,
+    gdup: async () => {
+      const g = S.games[i], n = prompt('Nom du nouveau jeu (la dispo sera copiée) :', g.n + ' (copie)');
+      if(!n) return;
+      const a = prompt('Abréviation :', g.a) || g.a;
+      const ng = {...g, id:'g' + Date.now().toString(36), n:n.trim(), a:a.trim()};
+      const l = [...S.games]; l.splice(i + 1, 0, ng);
+      await saveGames(l);
+      const src = S.avail[g.id];
+      if(src && src.size) await setDoc(doc(db, 'config', 'avail'), {[ng.id]:[...src].sort((x, y) => x - y)}, {merge:true});
+      toast(`« ${ng.n} » créé${src && src.size ? ' avec ' + src.size + ' Pokémon dispo' : ''}`);
+    },
     gimp: async () => {
       const g = S.games[i]; b.disabled = true; b.textContent = '…';
       try { const r = await importAvail(g); toast(`${g.a} : ${r.n} Pokémon disponibles${r.bad.length ? ' · introuvable : ' + r.bad.join(', ') : ''}`); }
@@ -799,12 +862,12 @@ async function saveGames(list){ await setDoc(doc(db, 'config', 'games'), {list})
 function openGames(){ S.editGame = null; openModal(renderGames); }
 function renderGames(){
   if(!$('#ovModal').classList.contains('show') && S.modalRender !== renderGames) return;
-  let h = mhead('Gérer les jeux') + `<p class="mute sm" style="font-weight:600">Le champ PokéAPI liste les version-groups (séparés par des virgules) utilisés pour importer automatiquement la disponibilité depuis les Pokédex régionaux. Tu peux ensuite corriger à la main dans chaque fiche.</p>`;
+  let h = mhead('Gérer les jeux') + `<p class="mute sm" style="font-weight:600">Le champ PokéAPI liste les version-groups (séparés par des virgules) utilisés pour importer automatiquement la disponibilité depuis les Pokédex régionaux. Pour distinguer les versions (ex. Rouge et Bleu), importe la dispo du jeu groupé, duplique-le avec ⧉, puis retire les exclusivités avec « ✏️ Éditer la dispo » dans la barre admin.</p>`;
   if(!S.games.length) h += `<button class="btn pri" data-a="gdef">Initialiser avec la liste par défaut</button>`;
   S.games.forEach((g, i) => {
     h += `<div class="grow"><span class="dot" style="background:${g.c}"></span><div style="flex:1 1 160px;min-width:0"><b>${esc(g.n)}</b> <span class="mute sm">${esc(g.a)} · ${g.gen ? 'Gen ' + g.gen : 'hors gen'} · ${(S.avail[g.id] && S.avail[g.id].size) || 0} dispo</span><div class="mute sm">${esc(g.vg || '—')}</div></div>` +
       `<button class="btn sm" data-a="gup" data-i="${i}">↑</button><button class="btn sm" data-a="gdn" data-i="${i}">↓</button>` +
-      `<button class="btn sm" data-a="gimp" data-i="${i}" ${g.vg ? '' : 'disabled'}>⇩ Dispo</button><button class="btn sm" data-a="ged" data-i="${i}">✎</button><button class="btn sm dan" data-a="gdel" data-i="${i}">🗑</button></div>`;
+      `<button class="btn sm" data-a="gimp" data-i="${i}" ${g.vg ? '' : 'disabled'}>⇩ Dispo</button><button class="btn sm" data-a="gdup" data-i="${i}" title="Dupliquer">⧉</button><button class="btn sm" data-a="ged" data-i="${i}">✎</button><button class="btn sm dan" data-a="gdel" data-i="${i}">🗑</button></div>`;
   });
   const e = S.editGame || {};
   h += `<div class="sec">${e.id ? 'Modifier « ' + esc(e.n) + ' »' : 'Ajouter un jeu'}</div><div class="gform">` +
@@ -863,8 +926,8 @@ function renderSettings(){
   let h = mhead('Réglages');
   h += `<div class="sec">Compte</div><div class="grow"><div style="flex:1"><b>${esc(u.displayName || u.email || 'Invité')}</b><div class="mute sm">${type}${S.isAdmin ? ' · administrateur' : ''}</div></div><button class="btn sm dan" data-a="logout">Se déconnecter</button></div>`;
   h += `<div class="grow"><span class="mute sm" style="font-weight:700">UID</span><span class="code">${esc(u.uid)}</span><button class="btn sm" data-a="uid">Copier</button></div>`;
-  h += `<div class="sec">Formes suivies</div><p class="mute sm" style="margin-top:0;font-weight:600">Les formes cochées comptent dans tes statistiques et apparaissent dans la grille quand « Formes » est activé.</p>`;
-  for(const k of ['regional','mega','gmax','alt','cosm']){
+  h += `<div class="sec">Formes suivies</div><p class="mute sm" style="margin-top:0;font-weight:600">Les formes cochées apparaissent dans les fiches et comptent dans tes statistiques et dans le compteur de formes des cartes.</p>`;
+  for(const k of ['fem','regional','mega','gmax','alt','cosm']){
     const n = Object.values(S.byKey).filter(e => e.kind === k && !S.ov.hidden[e.key]).length;
     h += `<label class="chk"><input type="checkbox" data-kind="${k}" ${S.settings.kinds[k] ? 'checked' : ''}> ${KINDS[k]} <span class="mute sm" style="margin-left:auto">${n}</span></label>`;
   }
