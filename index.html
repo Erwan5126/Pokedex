@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pokédex — Erwan</title>
+<meta name="theme-color" content="#0b0f24">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pokédex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0f24;--bg2:#10163a;--card:#161f48;--card2:#1c2757;--line:rgba(255,255,255,.08);--text:#e8ecff;--mute:#8a93c4;--accent:#7c5cff;--accent2:#a78bfa;--red:#ff5c6c;--gold:#ffd166;--green:#3ddc97;--cyan:#4cc9f0;--home:#26c6da;--r:14px;--hh:58px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Nunito,system-ui,sans-serif}
+body{background:radial-gradient(1200px 600px at 85% -10%,#2a1f6b55,transparent),radial-gradient(900px 500px at -10% 10%,#0f3a6b44,transparent),var(--bg);min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer}
+button:disabled{opacity:.35;cursor:default}
+.px{font-family:'Press Start 2P',monospace}
+.mute{color:var(--mute)}
+.sm{font-size:12px}
+
+/* Header */
+header{position:sticky;top:0;z-index:100;background:rgba(11,15,36,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top) + 10px) 16px 10px}
+.hrow{display:flex;align-items:center;gap:10px;max-width:1400px;margin:0 auto}
+.logo{font-size:12px;letter-spacing:1px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.ball{width:22px;height:22px;border-radius:50%;background:linear-gradient(#ff5c6c 0 45%,#111 45% 55%,#f4f4f8 55%);border:2px solid #111;position:relative;flex:none}
+.ball::after{content:'';position:absolute;left:50%;top:50%;width:7px;height:7px;transform:translate(-50%,-50%);border-radius:50%;background:#f4f4f8;border:2px solid #111}
+.ball.big{width:64px;height:64px;border-width:4px;animation:spin 1s linear infinite}
+.ball.big::after{width:18px;height:18px;border-width:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pills{display:flex;gap:6px;flex:1;overflow-x:auto;scrollbar-width:none;justify-content:flex-end}
+.pills::-webkit-scrollbar{display:none}
+.pill{background:var(--card);border:1px solid var(--line);border-radius:99px;padding:5px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+.pill b{color:var(--accent2)}
+.pill.s b{color:var(--gold)}.pill.iv b{color:var(--cyan)}.pill.h b{color:var(--home)}
+.ib{background:var(--card);border:1px solid var(--line);border-radius:10px;width:36px;height:36px;display:grid;place-items:center;font-size:16px;flex:none;padding:0}
+.ib.on{background:var(--red);border-color:var(--red)}
+.adminbar{display:none;position:sticky;top:var(--hh);z-index:90;background:#1a0a2e;border-bottom:1px solid rgba(255,92,108,.35);padding:8px 16px;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;font-weight:800;color:var(--red)}
+.adminbar.show{display:flex}
+.btn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-weight:700;font-size:13px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.dan{background:transparent;border-color:var(--red);color:var(--red)}
+.btn.sm{padding:5px 9px;font-size:12px}
+.wide{width:100%}
+
+/* Main */
+.wrap{max-width:1400px;margin:0 auto;padding:12px 16px calc(80px + env(safe-area-inset-bottom))}
+.gens{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.gens::-webkit-scrollbar{display:none}
+.gen{flex:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;text-align:left;min-width:96px}
+.gen .gl{font-size:12px;font-weight:800}
+.gen small{display:block;color:var(--mute);font-size:11px;font-weight:700;margin-top:2px}
+.gen .bar{height:3px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}
+.gen .bar i{display:block;height:100%;background:var(--green)}
+.gen.on{border-color:var(--accent);background:linear-gradient(180deg,#2a2370,var(--card))}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 8px;align-items:center}
+.search{flex:1 1 220px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;color:var(--text);font:inherit;font-size:16px;min-width:0}
+select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 10px;color:var(--text);font:inherit;font-size:14px;max-width:100%}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;background:transparent;border:1px solid var(--line);border-radius:99px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--mute)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.count{color:var(--mute);font-size:12px;font-weight:700;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
+.card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 6px 10px;text-align:center;cursor:pointer;transition:transform .12s;user-select:none;-webkit-user-select:none}
+.card:active{transform:scale(.97)}
+.card img{width:80px;height:80px;object-fit:contain;image-rendering:pixelated;opacity:.35;filter:grayscale(1)}
+.card.got img{opacity:1;filter:none}
+.card.got{background:linear-gradient(180deg,#1d2a5e,var(--card));border-color:rgba(61,220,151,.35)}
+.card.sh{border-color:rgba(255,209,102,.65);box-shadow:0 0 0 1px rgba(255,209,102,.25) inset}
+.num{font-size:9px;color:var(--mute);font-family:'Press Start 2P',monospace}
+.nm{font-size:12.5px;font-weight:800;line-height:1.2;margin-top:4px}
+.fk{display:inline-block;font-size:9.5px;font-weight:800;color:var(--accent2);margin-top:2px}
+.bd{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:5px;min-height:17px}
+.bd span{font-size:9px;font-weight:800;border-radius:6px;padding:2px 4px;background:var(--card2);color:var(--mute)}
+.bd .s{color:var(--gold)}.bd .iv{color:var(--cyan)}.bd .h{color:var(--home)}
+.qc{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--bg2);font-size:13px;font-weight:800;color:var(--mute);display:grid;place-items:center;padding:0}
+.card.got .qc{background:var(--green);border-color:var(--green);color:#06291b}
+.empty{text-align:center;padding:60px 20px;color:var(--mute);font-weight:700}
+.empty .btn{margin-top:14px}
+
+/* Overlays */
+.ov{position:fixed;inset:0;background:rgba(4,6,18,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.ov.show{display:flex}
+.sheet{background:var(--bg2);border:1px solid var(--line);border-radius:22px 22px 0 0;width:100%;max-width:640px;max-height:92vh;overflow:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(22px + env(safe-area-inset-bottom));animation:up .22s ease}
+@media(min-width:700px){.ov{align-items:center}.sheet{border-radius:22px;max-height:88vh}}
+@keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.shead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hero{display:flex;gap:14px;align-items:center;margin:10px 0 6px}
+.art{width:140px;height:140px;flex:none;border-radius:18px;background:radial-gradient(circle,#2a2f6e,transparent 70%);display:grid;place-items:center;position:relative;cursor:pointer}
+.art img{width:130px;height:130px;object-fit:contain}
+.shtag{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;background:var(--card2);border:1px solid var(--line);border-radius:99px;padding:2px 8px;white-space:nowrap}
+.h1{font-size:22px;font-weight:800;line-height:1.15}
+.types{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.type{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.35)}
+.sec{font-size:11px;font-weight:800;color:var(--mute);text-transform:uppercase;letter-spacing:.8px;margin:18px 0 8px}
+.frow{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:8px}
+.frow.hid{opacity:.5}
+.ftop{display:flex;align-items:center;gap:8px}
+.ftop img{width:48px;height:48px;object-fit:contain;image-rendering:pixelated;flex:none}
+.fname{font-weight:800;font-size:14px;flex:1;min-width:0}
+.tg{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.t{border:1px solid var(--line);background:var(--bg2);border-radius:10px;padding:7px 10px;font-size:12px;font-weight:800;color:var(--mute)}
+.t.on.t-c{background:var(--green);border-color:var(--green);color:#06291b}
+.t.on.t-s{background:var(--gold);border-color:var(--gold);color:#3a2a00}
+.t.on.t-iv{background:var(--cyan);border-color:var(--cyan);color:#032633}
+.t.on.t-h{background:var(--home);border-color:var(--home);color:#032a30}
+.gsel{padding:6px 8px;font-size:12px;border-radius:10px;flex:1 1 140px}
+.gchips{display:flex;gap:6px;flex-wrap:wrap}
+.gchip{border:1px solid var(--gc,var(--line));background:transparent;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:800;opacity:.35}
+.gchip.on{opacity:1;background:color-mix(in srgb,var(--gc) 28%,transparent)}
+.gchip:disabled{cursor:default}
+.gchip.on:disabled{opacity:1}
+.grow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:6px}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}
+.gform{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gform .inp:first-child,.gform .full{grid-column:1/-1}
+.gform input[type=color]{height:42px;padding:4px}
+.srow{display:grid;grid-template-columns:110px 1fr 70px;gap:10px;align-items:center;font-size:13px;font-weight:700;margin-bottom:8px}
+.sbar{height:8px;background:var(--card2);border-radius:8px;overflow:hidden}
+.sbar i{display:block;height:100%;background:var(--green);border-radius:8px}
+.big4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.big4 div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.big4 b{display:block;font-size:20px}
+.big4 small{color:var(--mute);font-weight:700;font-size:11px}
+.chk{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:6px;font-weight:700}
+.chk input{width:20px;height:20px;accent-color:var(--accent)}
+.code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px;word-break:break-all;flex:1}
+.pbox{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:20px;width:min(420px,90vw);align-self:center}
+.pbar{height:10px;background:var(--card2);border-radius:10px;overflow:hidden;margin:12px 0 8px}
+.pbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--cyan));transition:width .2s}
+
+/* Login */
+.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;z-index:300;background:var(--bg)}
+.lcard{width:min(380px,100%);background:var(--bg2);border:1px solid var(--line);border-radius:22px;padding:26px 20px;display:flex;flex-direction:column;gap:10px}
+.lsub{color:var(--mute);text-align:center;font-weight:600;font-size:14px;margin:4px 0 8px}
+.or{text-align:center;color:var(--mute);font-size:12px;font-weight:800;margin:2px 0}
+.row2{display:flex;gap:8px}
+.link{background:none;border:none;color:var(--accent2);font-weight:700;font-size:13px;padding:2px}
+.lerr{color:var(--red);font-weight:700;font-size:13px;text-align:center;min-height:18px}
+.lnote{color:var(--mute);font-size:12px;text-align:center;margin:0}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-weight:800;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:400;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%)}
+@media(max-width:560px){.logo span.lt{display:none}.pill .lb{display:none}.grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.card img{width:68px;height:68px}.srow{grid-template-columns:86px 1fr 60px}}
+</style>
+</head>
+<body>
+
+<div id="boot" class="screen"><div class="ball big"></div></div>
+
+<div id="setup" class="screen" hidden>
+  <div class="lcard">
+    <div class="logo px" style="justify-content:center;font-size:14px"><span class="ball"></span>POKÉDEX</div>
+    <p class="lsub">Configuration manquante : renseigne <b>FIREBASE_CONFIG</b> et <b>ADMIN_UID</b> en haut du script de ce fichier, puis recharge la page.</p>
+  </div>
+</div>
+
+<div id="login" class="screen" hidden>
+  <div class="lcard">
+    <div class="logo px" style="justify-content:center;font-size:15px"><span class="ball"></span>POKÉDEX</div>
+    <p class="lsub">Captures, shiny, IV parfaits, formes et living dex HOME — synchronisés sur tous tes appareils.</p>
+    <button class="btn pri wide" id="lGoogle">Continuer avec Google</button>
+    <div class="or">ou</div>
+    <input class="inp wide" id="lMail" type="email" placeholder="E-mail" autocomplete="email">
+    <input class="inp wide" id="lPass" type="password" placeholder="Mot de passe" autocomplete="current-password">
+    <div class="row2"><button class="btn wide" id="lIn">Se connecter</button><button class="btn wide" id="lUp">Créer un compte</button></div>
+    <button class="link" id="lReset">Mot de passe oublié ?</button>
+    <div class="or">ou</div>
+    <button class="btn wide" id="lAnon">Continuer sans compte</button>
+    <p class="lnote">Sans compte, ta progression reste liée à cet appareil.</p>
+    <div class="lerr" id="lErr"></div>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header id="hdr">
+    <div class="hrow">
+      <div class="logo px"><span class="ball"></span><span class="lt">POKÉDEX</span></div>
+      <div class="pills" id="pills"></div>
+      <button class="ib" id="bStats" title="Statistiques">📊</button>
+      <button class="ib" id="bAdmin" title="Mode admin" hidden>🔑</button>
+      <button class="ib" id="bSet" title="Réglages">⚙️</button>
+    </div>
+  </header>
+  <div class="adminbar" id="adminbar">
+    MODE ADMIN
+    <button class="btn sm" id="aSync">⟳ Synchroniser PokéAPI</button>
+    <button class="btn sm" id="aGames">🎮 Gérer les jeux</button>
+    <span class="mute" style="font-weight:700">Dans les fiches : dispo par jeu, masquer / renommer les formes</span>
+  </div>
+  <main class="wrap">
+    <div class="gens" id="gens"></div>
+    <div class="tools">
+      <input class="search" id="q" type="search" placeholder="Nom (FR / EN) ou numéro…" autocomplete="off">
+      <select id="fGame"></select>
+      <select id="fType"></select>
+      <button class="chip" id="fForms">Formes</button>
+    </div>
+    <div class="chips" id="fStatus"></div>
+    <div class="count" id="count"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden></div>
+  </main>
+</div>
+
+<div class="ov" id="ovSheet"><div class="sheet" id="sheet"></div></div>
+<div class="ov" id="ovModal"><div class="sheet" id="modal"></div></div>
+<div class="ov" id="ovProg"><div class="pbox"><div style="font-weight:800" id="pTitle"></div><div class="pbar"><i id="pBar"></i></div><div class="mute sm" id="pTxt" style="font-weight:700"></div></div></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileImp" accept="application/json,.json" hidden>
+
+<script type="module">
+/* =====================================================================
+   CONFIGURATION — à remplir
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBIKQxZ0RW9F3jE15oV8R6doOUrx1aBpYo",
+  authDomain: "pokedex-1f7b1.firebaseapp.com",
+  projectId: "pokedex-1f7b1",
+  storageBucket: "pokedex-1f7b1.firebasestorage.app",
+  messagingSenderId: "143250667449",
+  appId: "1:143250667449:web:583416357520d3bce96868"
+};
+const ADMIN_UID = "À_REMPLIR"; // ton UID, visible dans ⚙️ Réglages une fois connecté
+const APP_V = "1.0";
+/* ===================================================================== */
+
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signInAnonymously, signOut
+} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, updateDoc,
+  onSnapshot, collection, deleteField, FieldPath, writeBatch, serverTimestamp, arrayUnion, arrayRemove
+} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+/* ---------- Constantes ---------- */
+const API = 'https://pokeapi.co/api/v2/';
+const SPR = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
+const GEN = {1:'Kanto',2:'Johto',3:'Hoenn',4:'Sinnoh',5:'Unys',6:'Kalos',7:'Alola',8:'Galar',9:'Paldea'};
+const KINDS = {base:'Base',regional:'Régionale',mega:'Méga',gmax:'Gigamax',alt:'Alternative',cosm:'Cosmétique'};
+const TYPES = ['normal','fighting','flying','poison','ground','rock','bug','ghost','steel','fire','water','grass','electric','psychic','ice','dragon','dark','fairy'];
+const TYPE_FR = ['Normal','Combat','Vol','Poison','Sol','Roche','Insecte','Spectre','Acier','Feu','Eau','Plante','Électrik','Psy','Glace','Dragon','Ténèbres','Fée'];
+const TYPE_C = ['#9fa19f','#ff8000','#81b9ef','#9141cb','#915121','#afa981','#91a119','#704170','#60a1b8','#e62829','#2980ef','#3fa129','#e0ad00','#ef4179','#3dcef3','#5060e1','#624d4e','#ef70ef'];
+const STATUS = [['all','Tous'],['miss','Manquants'],['c','Capturés'],['nos','Shiny manquants'],['s','Shiny'],['noiv','IV manquants'],['noh','Pas dans HOME']];
+const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true};
+const DEFAULT_GAMES = [
+  {id:'rby',n:'Rouge / Bleu / Jaune',a:'RBJ',c:'#e3350d',gen:1,vg:'red-blue,yellow'},
+  {id:'gsc',n:'Or / Argent / Cristal',a:'OAC',c:'#c9a227',gen:2,vg:'gold-silver,crystal'},
+  {id:'rse',n:'Rubis / Saphir / Émeraude',a:'RSE',c:'#2f9e6e',gen:3,vg:'ruby-sapphire,emerald'},
+  {id:'frlg',n:'Rouge Feu / Vert Feuille',a:'RFVF',c:'#ff7f2a',gen:3,vg:'firered-leafgreen'},
+  {id:'dpp',n:'Diamant / Perle / Platine',a:'DPP',c:'#7f8fc9',gen:4,vg:'diamond-pearl,platinum'},
+  {id:'hgss',n:'HeartGold / SoulSilver',a:'HGSS',c:'#d4af37',gen:4,vg:'heartgold-soulsilver'},
+  {id:'bw',n:'Noir / Blanc',a:'NB',c:'#8a8a8a',gen:5,vg:'black-white'},
+  {id:'b2w2',n:'Noir 2 / Blanc 2',a:'N2B2',c:'#3a6ea5',gen:5,vg:'black-2-white-2'},
+  {id:'xy',n:'X / Y',a:'XY',c:'#1f6fd1',gen:6,vg:'x-y'},
+  {id:'oras',n:'Rubis Oméga / Saphir Alpha',a:'ROSA',c:'#c0392b',gen:6,vg:'omega-ruby-alpha-sapphire'},
+  {id:'sm',n:'Soleil / Lune',a:'SL',c:'#f39c12',gen:7,vg:'sun-moon'},
+  {id:'usum',n:'Ultra-Soleil / Ultra-Lune',a:'USUL',c:'#e67e22',gen:7,vg:'ultra-sun-ultra-moon'},
+  {id:'lgpe',n:"Let's Go Pikachu / Évoli",a:'LGPE',c:'#f5c518',gen:7,vg:'lets-go-pikachu-lets-go-eevee'},
+  {id:'swsh',n:'Épée / Bouclier',a:'EB',c:'#00a1e9',gen:8,vg:'sword-shield,the-isle-of-armor,the-crown-tundra'},
+  {id:'bdsp',n:'Diamant Étincelant / Perle Scintillante',a:'DEPS',c:'#6c8ebf',gen:8,vg:'brilliant-diamond-and-shining-pearl'},
+  {id:'pla',n:'Légendes Pokémon : Arceus',a:'LPA',c:'#8b6f47',gen:8,vg:'legends-arceus'},
+  {id:'sv',n:'Écarlate / Violet',a:'EV',c:'#d63031',gen:9,vg:'scarlet-violet,the-teal-mask,the-indigo-disk'},
+  {id:'za',n:'Légendes Pokémon : Z-A',a:'LZA',c:'#27ae60',gen:9,vg:'legends-za'},
+  {id:'go',n:'Pokémon GO',a:'GO',c:'#3d7dca',gen:0,vg:''},
+  {id:'home',n:'Pokémon HOME',a:'HOME',c:'#26c6da',gen:0,vg:''}
+];
+const FB = "if(this.dataset.fb&&this.src!==this.dataset.fb){this.src=this.dataset.fb}else{this.onerror=null;this.style.visibility='hidden'}";
+
+/* ---------- Utilitaires ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const pad = n => String(n).padStart(4, '0');
+const cap = s => String(s || '').split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+const idFromUrl = u => +String(u).split('/').filter(Boolean).pop();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const frName = arr => (arr || []).find(x => x.language && x.language.name === 'fr')?.name || null;
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
+function show(id){ for(const s of ['boot','setup','login','app']) $('#'+s).hidden = s !== id; }
+
+/* ---------- État ---------- */
+const S = {
+  user:null, isAdmin:false, adminMode:false,
+  species:[], gens:[], byKey:{}, bySid:{},
+  games:[], avail:{}, ov:{hidden:{}, names:{}},
+  prog:{}, settings:structuredClone(DEF_SET),
+  view:{gen:0, q:'', status:'all', game:'', type:''},
+  lastVisible:[], sheetSid:null, sheetShiny:false, editGame:null
+};
+const ename = e => S.ov.names[e.key] || e.raw;
+const etypes = e => e.t || e.sp.f[0].t || [];
+const isTracked = e => e.kind === 'base' || (!S.ov.hidden[e.key] && !!S.settings.kinds[e.kind]);
+const gameById = id => S.games.find(g => g.id === id);
+const sprUrl = (e, shiny) => SPR + (shiny ? 'shiny/' : '') + e.spr + '.png';
+const artUrl = (e, shiny) => typeof e.spr === 'number' ? SPR + 'other/home/' + (shiny ? 'shiny/' : '') + e.spr + '.png' : sprUrl(e, shiny);
+
+/* ---------- Firebase ---------- */
+const configured = !String(FIREBASE_CONFIG.apiKey).startsWith('À_');
+let auth, db;
+const uref = () => doc(db, 'users', S.user.uid);
+
+if(!configured){ show('setup'); }
+else {
+  const app = initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(app);
+  db = initializeFirestore(app, {localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})});
+  getRedirectResult(auth).catch(loginErr);
+  onAuthStateChanged(auth, async u => {
+    if(!u){ show('login'); return; }
+    S.user = u; S.isAdmin = u.uid === ADMIN_UID;
+    show('boot');
+    try { await start(); show('app'); }
+    catch(e){ console.error(e); show('app'); toast('Erreur de chargement : ' + e.message); }
+  });
+}
+
+/* ---------- Connexion ---------- */
+const AUTH_ERR = {
+  'auth/invalid-credential':'E-mail ou mot de passe incorrect','auth/wrong-password':'E-mail ou mot de passe incorrect',
+  'auth/user-not-found':'E-mail ou mot de passe incorrect','auth/email-already-in-use':'Un compte existe déjà avec cet e-mail',
+  'auth/weak-password':'Mot de passe trop court (6 caractères minimum)','auth/invalid-email':'E-mail invalide',
+  'auth/missing-password':'Renseigne un mot de passe','auth/too-many-requests':'Trop de tentatives, réessaie plus tard',
+  'auth/unauthorized-domain':'Domaine non autorisé : ajoute-le dans Firebase › Authentication › Paramètres',
+  'auth/operation-not-allowed':"Ce mode de connexion n'est pas activé dans Firebase",
+  'auth/network-request-failed':'Pas de connexion réseau'
+};
+function loginErr(e){ if(!e || e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return; $('#lErr').textContent = AUTH_ERR[e.code] || e.message; }
+const mail = () => $('#lMail').value.trim(), pass = () => $('#lPass').value;
+$('#lGoogle').onclick = async () => {
+  const p = new GoogleAuthProvider();
+  try { await signInWithPopup(auth, p); }
+  catch(e){ if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code)) signInWithRedirect(auth, p); else loginErr(e); }
+};
+$('#lIn').onclick = () => signInWithEmailAndPassword(auth, mail(), pass()).catch(loginErr);
+$('#lUp').onclick = () => createUserWithEmailAndPassword(auth, mail(), pass()).catch(loginErr);
+$('#lAnon').onclick = () => signInAnonymously(auth).catch(loginErr);
+$('#lReset').onclick = async () => {
+  if(!mail()) return $('#lErr').textContent = 'Indique ton e-mail ci-dessus';
+  try { await sendPasswordResetEmail(auth, mail()); $('#lErr').textContent = 'E-mail de réinitialisation envoyé'; } catch(e){ loginErr(e); }
+};
+$('#lPass').addEventListener('keydown', e => { if(e.key === 'Enter') $('#lIn').click(); });
+
+/* ---------- Démarrage ---------- */
+async function start(){
+  await ensureUser();
+  await loadCatalog();
+  onSnapshot(uref(), snap => {
+    const d = snap.data() || {};
+    S.prog = d.p || {};
+    S.settings = {...DEF_SET, ...(d.settings || {}), kinds:{...DEF_SET.kinds, ...((d.settings || {}).kinds || {})}};
+    if(!snap.metadata.hasPendingWrites) scheduleRender();
+  });
+  onSnapshot(doc(db, 'config', 'games'), s => { S.games = (s.data() || {}).list || []; scheduleRender(); });
+  onSnapshot(doc(db, 'config', 'avail'), s => { const d = s.data() || {}; S.avail = {}; for(const k in d) S.avail[k] = new Set(d[k]); scheduleRender(); });
+  onSnapshot(doc(db, 'config', 'overrides'), s => { const d = s.data() || {}; S.ov = {hidden:d.hidden || {}, names:d.names || {}}; scheduleRender(); });
+  $('#bAdmin').hidden = !S.isAdmin;
+  S.adminMode = S.isAdmin && localStorage.getItem('pdx-admin') === '1';
+  applyAdmin();
+  buildStatic();
+  renderAll();
+}
+async function ensureUser(){
+  const r = uref();
+  let snap = null;
+  try { snap = await getDoc(r); } catch(e){}
+  if(!snap || !snap.exists()){
+    await setDoc(r, {p:{}, settings:DEF_SET, name:S.user.displayName || S.user.email || 'Invité', created:serverTimestamp()}, {merge:true});
+  }
+}
+async function loadCatalog(){
+  const snap = await getDocs(collection(db, 'catalog'));
+  const docs = [];
+  snap.forEach(d => { if(/^g\d+$/.test(d.id)) docs.push(d.data()); });
+  buildCatalog(docs);
+}
+function buildCatalog(docs){
+  S.species = []; S.byKey = {}; S.bySid = {};
+  for(const d of docs) for(const sp of (d.list || [])){
+    const s = {i:sp.i, n:sp.n, e:sp.e, g:sp.g, f:[]};
+    for(const f of sp.f){
+      if(S.byKey[f.k]) continue;
+      const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s};
+      s.f.push(e); S.byKey[f.k] = e;
+    }
+    if(s.f.length){ S.species.push(s); S.bySid[s.i] = s; }
+  }
+  S.species.sort((a, b) => a.i - b.i);
+  S.gens = [...new Set(S.species.map(s => s.g))].sort((a, b) => a - b);
+}
+
+/* ---------- Rendu ---------- */
+let rq = 0;
+function scheduleRender(){ if(rq) return; rq = requestAnimationFrame(() => { rq = 0; renderAll(); }); }
+function renderAll(){
+  renderPills(); renderGens(); renderFilters(); renderGrid();
+  if(S.sheetSid) renderSheet();
+  const typing = document.activeElement && $('#modal').contains(document.activeElement) && document.activeElement.matches('input:not([type=checkbox])');
+  if($('#ovModal').classList.contains('show') && S.modalRender && !typing) S.modalRender();
+}
+function tally(list){
+  let n = 0, c = 0, s = 0, iv = 0, h = 0;
+  for(const e of list){ n++; const p = S.prog[e.key]; if(p){ if(p.c) c++; if(p.s) s++; if(p.iv) iv++; if(p.h) h++; } }
+  return {n, c, s, iv, h};
+}
+function tracked(filter){
+  const out = [];
+  for(const sp of S.species){ if(filter && !filter(sp)) continue; for(const e of sp.f) if(isTracked(e)) out.push(e); }
+  return out;
+}
+function renderPills(){
+  const t = tally(tracked());
+  $('#pills').innerHTML =
+    `<span class="pill"><span class="lb">Capturés </span><b>${t.c}</b>/${t.n} · ${pct(t.c, t.n)}%</span>` +
+    `<span class="pill s">✨ <b>${t.s}</b></span><span class="pill iv">IV <b>${t.iv}</b></span><span class="pill h">HOME <b>${t.h}</b></span>`;
+}
+function renderGens(){
+  const all = tally(tracked());
+  let h = `<button class="gen ${S.view.gen === 0 ? 'on' : ''}" data-g="0"><div class="gl">Tous</div><small>${all.c}/${all.n}</small><div class="bar"><i style="width:${pct(all.c, all.n)}%"></i></div></button>`;
+  for(const g of S.gens){
+    const t = tally(tracked(sp => sp.g === g));
+    h += `<button class="gen ${S.view.gen === g ? 'on' : ''}" data-g="${g}"><div class="gl">Gen ${g} · ${GEN[g] || ''}</div><small>${t.c}/${t.n}</small><div class="bar"><i style="width:${pct(t.c, t.n)}%"></i></div></button>`;
+  }
+  $('#gens').innerHTML = h;
+}
+function buildStatic(){
+  $('#fStatus').innerHTML = STATUS.map(([k, l]) => `<button class="chip" data-s="${k}">${l}</button>`).join('');
+  $('#fType').innerHTML = '<option value="">Tous les types</option>' + TYPE_FR.map((t, i) => `<option value="${i}">${t}</option>`).join('');
+}
+function renderFilters(){
+  document.querySelectorAll('#fStatus .chip').forEach(b => b.classList.toggle('on', b.dataset.s === S.view.status));
+  $('#fForms').classList.toggle('on', !!S.settings.showForms);
+  const cur = S.view.game;
+  $('#fGame').innerHTML = '<option value="">Tous les jeux</option>' +
+    S.games.filter(g => S.avail[g.id] && S.avail[g.id].size).map(g => `<option value="${g.id}" ${g.id === cur ? 'selected' : ''}>Dispo : ${esc(g.n)}</option>`).join('');
+  if(cur && !$('#fGame').value) S.view.game = '';
+}
+function statusOk(e){
+  const p = S.prog[e.key] || {};
+  switch(S.view.status){
+    case 'miss': return !p.c;
+    case 'c': return !!p.c;
+    case 'nos': return !p.s;
+    case 's': return !!p.s;
+    case 'noiv': return !p.iv;
+    case 'noh': return !p.h;
+    default: return true;
+  }
+}
+function visibleEntries(){
+  const q = norm(S.view.q.trim());
+  const qn = /^#?\d+$/.test(q) ? +q.replace('#', '') : null;
+  const av = S.view.game ? S.avail[S.view.game] : null;
+  const ty = S.view.type === '' ? null : +S.view.type;
+  const out = [];
+  for(const sp of S.species){
+    if(S.view.gen && sp.g !== S.view.gen) continue;
+    if(av && !av.has(sp.i)) continue;
+    if(qn !== null && sp.i !== qn) continue;
+    for(const e of sp.f){
+      if(e.kind !== 'base' && (!S.settings.showForms || !isTracked(e))) continue;
+      if(q && qn === null && !norm(ename(e)).includes(q) && !norm(sp.n).includes(q) && !sp.e.includes(q)) continue;
+      if(ty !== null && !etypes(e).includes(ty)) continue;
+      if(!statusOk(e)) continue;
+      out.push(e);
+    }
+  }
+  return out;
+}
+function cardHtml(e){
+  const p = S.prog[e.key] || {};
+  const g = p.g && gameById(p.g);
+  return `<div class="card${p.c ? ' got' : ''}${p.s ? ' sh' : ''}" data-k="${esc(e.key)}">` +
+    `<button class="qc" aria-label="Capturé">✓</button>` +
+    `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(e, false)}" data-fb="${artUrl(e, false)}" onerror="${FB}" alt="">` +
+    `<div class="num">#${pad(e.sp.i)}</div><div class="nm">${esc(ename(e))}</div>` +
+    (e.kind !== 'base' ? `<div class="fk">${KINDS[e.kind] || ''}</div>` : '') +
+    `<div class="bd">${p.s ? '<span class="s">✨</span>' : ''}${p.iv ? '<span class="iv">IV</span>' : ''}${p.h ? '<span class="h">H</span>' : ''}${g ? `<span>${esc(g.a)}</span>` : ''}</div></div>`;
+}
+function renderGrid(){
+  const empty = $('#empty');
+  if(!S.species.length){
+    $('#grid').innerHTML = ''; $('#count').textContent = '';
+    empty.hidden = false;
+    empty.innerHTML = S.isAdmin
+      ? `Le catalogue est vide.<br>Lance la synchronisation depuis PokéAPI (2 à 4 minutes).<br><button class="btn pri" id="eSync">⟳ Synchroniser maintenant</button>`
+      : `Le catalogue n'a pas encore été initialisé par l'administrateur.`;
+    const b = $('#eSync'); if(b) b.onclick = syncCatalog;
+    return;
+  }
+  const list = visibleEntries();
+  S.lastVisible = list;
+  const t = tally(list);
+  $('#count').textContent = `${list.length} entrée${list.length > 1 ? 's' : ''} · ${t.c} capturée${t.c > 1 ? 's' : ''}`;
+  $('#grid').innerHTML = list.map(cardHtml).join('');
+  empty.hidden = list.length > 0;
+  if(!list.length) empty.textContent = 'Aucun Pokémon ne correspond à ces filtres.';
+}
+function refreshCard(key){
+  const e = S.byKey[key]; if(!e) return;
+  const el = document.querySelector(`.card[data-k="${CSS.escape(key)}"]`);
+  if(el) el.outerHTML = cardHtml(e);
+  renderPills(); renderGens();
+}
+
+/* ---------- Progression ---------- */
+function setFlag(key, field, val){
+  const cur = {...(S.prog[key] || {})};
+  if(val) cur[field] = val; else delete cur[field];
+  if(val && field !== 'c') cur.c = 1;
+  if(field === 'c' && !val) for(const f of ['s','iv','h','g']) delete cur[f];
+  if(Object.keys(cur).length) S.prog[key] = cur; else delete S.prog[key];
+  updateDoc(uref(), new FieldPath('p', key), S.prog[key] ? S.prog[key] : deleteField())
+    .catch(err => { console.error(err); toast('Erreur de sauvegarde'); });
+  refreshCard(key);
+}
+function saveSettings(){ updateDoc(uref(), {settings:S.settings}).catch(() => toast('Erreur de sauvegarde')); }
+
+/* ---------- Événements principaux ---------- */
+$('#gens').addEventListener('click', ev => { const b = ev.target.closest('.gen'); if(!b) return; S.view.gen = +b.dataset.g; renderGens(); renderGrid(); window.scrollTo({top:0}); });
+$('#fStatus').addEventListener('click', ev => { const b = ev.target.closest('.chip'); if(!b) return; S.view.status = b.dataset.s; renderFilters(); renderGrid(); });
+let qT; $('#q').addEventListener('input', ev => { clearTimeout(qT); qT = setTimeout(() => { S.view.q = ev.target.value; renderGrid(); }, 150); });
+$('#fGame').addEventListener('change', ev => { S.view.game = ev.target.value; renderGrid(); });
+$('#fType').addEventListener('change', ev => { S.view.type = ev.target.value; renderGrid(); });
+$('#fForms').addEventListener('click', () => { S.settings.showForms = !S.settings.showForms; saveSettings(); renderFilters(); renderGrid(); });
+$('#grid').addEventListener('click', ev => {
+  const card = ev.target.closest('.card'); if(!card) return;
+  const e = S.byKey[card.dataset.k]; if(!e) return;
+  if(ev.target.closest('.qc')){
+    const p = S.prog[e.key] || {};
+    if(p.c && (p.s || p.iv || p.h || p.g) && !confirm(`Retirer ${ename(e)} de ta collection ? Shiny, IV, HOME et jeu seront effacés.`)) return;
+    setFlag(e.key, 'c', p.c ? 0 : 1);
+    return;
+  }
+  openSheet(e.sp.i);
+});
+$('#bStats').onclick = openStats;
+$('#bSet').onclick = openSettings;
+$('#bAdmin').onclick = () => { S.adminMode = !S.adminMode; localStorage.setItem('pdx-admin', S.adminMode ? '1' : '0'); applyAdmin(); if(S.sheetSid) renderSheet(); };
+$('#aSync').onclick = syncCatalog;
+$('#aGames').onclick = openGames;
+function applyAdmin(){ $('#adminbar').classList.toggle('show', S.adminMode); $('#bAdmin').classList.toggle('on', S.adminMode); }
+new ResizeObserver(() => document.documentElement.style.setProperty('--hh', $('#hdr').offsetHeight + 'px')).observe($('#hdr'));
+
+/* ---------- Fiche détail ---------- */
+function typeChips(ts){ return ts.map(i => `<span class="type" style="background:${TYPE_C[i]}">${TYPE_FR[i]}</span>`).join(''); }
+function navList(){ const seen = new Set(), out = []; for(const e of S.lastVisible) if(!seen.has(e.sp.i)){ seen.add(e.sp.i); out.push(e.sp.i); } return out; }
+function openSheet(sid){ S.sheetSid = sid; renderSheet(); $('#ovSheet').classList.add('show'); $('#sheet').scrollTop = 0; document.body.style.overflow = 'hidden'; }
+function closeSheet(){ $('#ovSheet').classList.remove('show'); S.sheetSid = null; if(!$('#ovModal').classList.contains('show')) document.body.style.overflow = ''; renderGrid(); }
+function navSheet(d){ const l = navList(); const i = l.indexOf(S.sheetSid); const j = i + d; if(i < 0 || j < 0 || j >= l.length) return; S.sheetSid = l[j]; renderSheet(); $('#sheet').scrollTop = 0; }
+function tbtn(e, p, f, label){ return `<button class="t t-${f} ${p[f] ? 'on' : ''}" data-a="tg" data-k="${esc(e.key)}" data-f="${f}">${label}</button>`; }
+function renderSheet(){
+  const sp = S.bySid[S.sheetSid]; if(!sp) return closeSheet();
+  const base = sp.f[0], sh = S.sheetShiny;
+  const forms = sp.f.filter(e => e.kind === 'base' || S.adminMode || isTracked(e));
+  const l = navList(), i = l.indexOf(sp.i);
+  let h = `<div class="shead"><button class="ib" data-a="prev" ${i <= 0 ? 'disabled' : ''}>‹</button>` +
+    `<div class="px" style="font-size:9px;color:var(--mute);text-align:center">#${pad(sp.i)} · GEN ${sp.g} ${esc((GEN[sp.g] || '').toUpperCase())}</div>` +
+    `<div style="display:flex;gap:6px"><button class="ib" data-a="next" ${i < 0 || i >= l.length - 1 ? 'disabled' : ''}>›</button><button class="ib" data-a="close">✕</button></div></div>`;
+  h += `<div class="hero"><div class="art" data-a="shiny" title="Basculer normal / shiny"><img crossorigin="anonymous" src="${artUrl(base, sh)}" data-fb="${sprUrl(base, sh)}" onerror="${FB}" alt=""><span class="shtag">${sh ? '✨ Shiny' : 'Normal'} ⇄</span></div>` +
+    `<div style="min-width:0"><div class="h1">${esc(sp.n)}</div><div class="mute" style="font-weight:700;font-size:13px">${esc(cap(sp.e))}</div><div class="types">${typeChips(etypes(base))}</div></div></div>`;
+  h += `<div class="sec">Ma collection</div>`;
+  for(const e of forms){
+    const p = S.prog[e.key] || {};
+    const hid = !!S.ov.hidden[e.key], off = !isTracked(e);
+    const tag = e.kind !== 'base' ? `<div class="fk">${KINDS[e.kind] || ''}${hid ? ' · masquée' : (off ? ' · non suivie' : '')}</div>` : '';
+    h += `<div class="frow ${hid || off ? 'hid' : ''}"><div class="ftop"><img crossorigin="anonymous" src="${sprUrl(e, sh)}" data-fb="${artUrl(e, sh)}" onerror="${FB}" alt=""><div class="fname">${esc(ename(e))}${tag}</div>` +
+      (S.adminMode && e.kind !== 'base' ? `<button class="btn sm" data-a="ren" data-k="${esc(e.key)}">✎</button><button class="btn sm" data-a="hide" data-k="${esc(e.key)}">${hid ? 'Afficher' : 'Masquer'}</button>` : '') +
+      `</div><div class="tg">${tbtn(e, p, 'c', '✓ Capturé')}${tbtn(e, p, 's', '✨ Shiny')}${tbtn(e, p, 'iv', 'IV 100%')}${tbtn(e, p, 'h', 'HOME')}` +
+      `<select class="gsel" data-k="${esc(e.key)}"><option value="">Jeu de capture…</option>${S.games.map(g => `<option value="${g.id}" ${p.g === g.id ? 'selected' : ''}>${esc(g.a)} — ${esc(g.n)}</option>`).join('')}</select></div></div>`;
+  }
+  const chips = S.games.map(g => {
+    const on = S.avail[g.id] && S.avail[g.id].has(sp.i);
+    if(!on && !S.adminMode) return '';
+    return `<button class="gchip ${on ? 'on' : ''}" style="--gc:${g.c}" ${S.adminMode ? `data-a="av" data-g="${g.id}"` : 'disabled'} title="${esc(g.n)}">${esc(g.a)}</button>`;
+  }).join('');
+  h += `<div class="sec">Disponible dans${S.adminMode ? ' <span style="color:var(--red)">· touche pour modifier</span>' : ''}</div><div class="gchips">${chips || '<span class="mute sm" style="font-weight:700">Aucun jeu renseigné</span>'}</div>`;
+  $('#sheet').innerHTML = h;
+}
+$('#ovSheet').addEventListener('click', ev => {
+  if(ev.target.id === 'ovSheet') return closeSheet();
+  const b = ev.target.closest('[data-a]'); if(!b || b.disabled) return;
+  const a = b.dataset.a;
+  if(a === 'close') closeSheet();
+  else if(a === 'prev') navSheet(-1);
+  else if(a === 'next') navSheet(1);
+  else if(a === 'shiny'){ S.sheetShiny = !S.sheetShiny; renderSheet(); }
+  else if(a === 'tg'){ const p = S.prog[b.dataset.k] || {}; setFlag(b.dataset.k, b.dataset.f, p[b.dataset.f] ? 0 : 1); renderSheet(); }
+  else if(a === 'ren') renameForm(b.dataset.k);
+  else if(a === 'hide') toggleHide(b.dataset.k);
+  else if(a === 'av') toggleAvail(b.dataset.g, S.sheetSid);
+});
+$('#ovSheet').addEventListener('change', ev => {
+  if(!ev.target.classList.contains('gsel')) return;
+  setFlag(ev.target.dataset.k, 'g', ev.target.value || 0); renderSheet();
+});
+let tx = 0, ty0 = 0;
+$('#sheet').addEventListener('touchstart', ev => { tx = ev.touches[0].clientX; ty0 = ev.touches[0].clientY; }, {passive:true});
+$('#sheet').addEventListener('touchend', ev => {
+  if(ev.target.closest('select,input')) return;
+  const dx = ev.changedTouches[0].clientX - tx, dy = ev.changedTouches[0].clientY - ty0;
+  if(Math.abs(dx) > 60 && Math.abs(dy) < 50) navSheet(dx < 0 ? 1 : -1);
+}, {passive:true});
+document.addEventListener('keydown', ev => {
+  if(ev.target.matches('input,select,textarea')) return;
+  if($('#ovModal').classList.contains('show')){ if(ev.key === 'Escape') closeModal(); return; }
+  if(!S.sheetSid) return;
+  if(ev.key === 'ArrowRight') navSheet(1);
+  else if(ev.key === 'ArrowLeft') navSheet(-1);
+  else if(ev.key === 'Escape') closeSheet();
+});
+
+/* ---------- Admin : fiches ---------- */
+async function renameForm(key){
+  const e = S.byKey[key]; if(!e) return;
+  const v = prompt('Nom affiché pour cette forme (vide = nom PokéAPI) :', ename(e));
+  if(v === null) return;
+  const val = v.trim() && v.trim() !== e.raw ? v.trim() : deleteField();
+  await setDoc(doc(db, 'config', 'overrides'), {names:{[key]:val}}, {merge:true}).catch(() => toast('Échec'));
+}
+async function toggleHide(key){
+  const val = S.ov.hidden[key] ? deleteField() : true;
+  await setDoc(doc(db, 'config', 'overrides'), {hidden:{[key]:val}}, {merge:true}).catch(() => toast('Échec'));
+}
+async function toggleAvail(gid, sid){
+  const on = S.avail[gid] && S.avail[gid].has(sid);
+  if(!S.avail[gid]) S.avail[gid] = new Set();
+  on ? S.avail[gid].delete(sid) : S.avail[gid].add(sid);
+  renderSheet();
+  await setDoc(doc(db, 'config', 'avail'), {[gid]: on ? arrayRemove(sid) : arrayUnion(sid)}, {merge:true}).catch(() => toast('Échec'));
+}
+
+/* ---------- PokéAPI ---------- */
+async function jget(url, tries = 4){
+  for(let t = 0; t < tries; t++){
+    try {
+      const r = await fetch(url);
+      if(r.ok) return await r.json();
+      if(r.status === 404) return null;
+    } catch(e){}
+    await sleep(600 * (t + 1));
+  }
+  throw new Error('PokéAPI ne répond pas (' + url.replace(API, '') + ')');
+}
+async function pmap(items, conc, fn, onProg){
+  let i = 0, done = 0; const out = new Array(items.length);
+  async function worker(){ while(i < items.length){ const k = i++; out[k] = await fn(items[k], k); done++; if(onProg && (done % 10 === 0 || done === items.length)) onProg(done, items.length); } }
+  await Promise.all(Array.from({length:Math.min(conc, items.length)}, worker));
+  return out;
+}
+const P = {
+  show(t){ $('#pTitle').textContent = t; $('#pTxt').textContent = ''; $('#pBar').style.width = '0'; $('#ovProg').classList.add('show'); },
+  set(txt, d, n){ $('#pTxt').textContent = `${txt} — ${d} / ${n}`; $('#pBar').style.width = (n ? d / n * 100 : 0) + '%'; },
+  hide(){ $('#ovProg').classList.remove('show'); }
+};
+function kindOf(name){
+  if(name.includes('-totem')) return 'alt';
+  if(name.includes('-gmax')) return 'gmax';
+  if(/-mega(-|$)/.test(name)) return 'mega';
+  if(/-(alola|galar|hisui|paldea)(-|$)/.test(name)) return 'regional';
+  return 'alt';
+}
+function formFr(f, base){ if(!f) return null; const full = frName(f.names); if(full) return full; const fn = frName(f.form_names); return fn ? `${base} (${fn})` : null; }
+function stemOf(u){ if(!u) return null; const m = u.match(/\/sprites\/pokemon\/([^/]+)\.png$/); return m ? m[1] : null; }
+
+async function syncCatalog(){
+  if(!S.isAdmin) return;
+  if(!confirm('Synchroniser le catalogue complet depuis PokéAPI ?\nCompte 2 à 4 minutes, garde la page ouverte.\nLes noms personnalisés, formes masquées et dispos par jeu sont conservés.')) return;
+  P.show('Synchronisation PokéAPI');
+  try {
+    P.set('Liste des espèces', 0, 1);
+    const list = await jget(API + 'pokemon-species?limit=2000');
+    const species = (await pmap(list.results, 16, async r => {
+      const s = await jget(r.url); if(!s) return null;
+      return {i:s.id, e:s.name, n:frName(s.names) || cap(s.name), g:idFromUrl(s.generation.url),
+        v:s.varieties.map(v => ({d:v.is_default, name:v.pokemon.name, url:v.pokemon.url}))};
+    }, (d, n) => P.set('Espèces', d, n))).filter(Boolean);
+
+    const vars = species.flatMap(s => s.v.map(v => ({s, v})));
+    await pmap(vars, 16, async ({s, v}) => {
+      const p = await jget(v.url); if(!p) return;
+      v.id = p.id;
+      v.t = p.types.slice().sort((a, b) => a.slot - b.slot).map(t => TYPES.indexOf(t.type.name)).filter(x => x >= 0);
+      if(!v.d){
+        const f = p.forms[0] ? await jget(p.forms[0].url) : null;
+        v.fr = formFr(f, s.n);
+      } else if(p.forms.length > 1){
+        const fs = await Promise.all(p.forms.map(fr => jget(fr.url)));
+        v.cos = fs.filter(f => f && !f.is_default).map(f => ({k:f.name, n:formFr(f, s.n) || `${s.n} (${cap(f.form_name)})`, s:stemOf(f.sprites && f.sprites.front_default)}));
+      }
+    }, (d, n) => P.set('Pokémon et formes', d, n));
+
+    P.set('Enregistrement', 0, 1);
+    const gens = {}; let entries = 0;
+    for(const s of species){
+      const def = s.v.find(v => v.d && v.id) || s.v.find(v => v.id); if(!def) continue;
+      const f = [{k:def.name, n:s.n, d:'base', s:def.id, t:def.t || []}];
+      const seen = new Set([def.name]);
+      for(const v of s.v){
+        if(v === def || !v.id || seen.has(v.name)) continue; seen.add(v.name);
+        const o = {k:v.name, n:v.fr || `${s.n} (${cap(v.name.replace(s.e + '-', ''))})`, d:kindOf(v.name), s:v.id};
+        if(v.t && v.t.join() !== (def.t || []).join()) o.t = v.t;
+        f.push(o);
+      }
+      for(const c of (def.cos || [])){ if(seen.has(c.k)) continue; seen.add(c.k); f.push({k:c.k, n:c.n, d:'cosm', s:c.s || def.id}); }
+      (gens[s.g] = gens[s.g] || []).push({i:s.i, n:s.n, e:s.e, g:s.g, f});
+      entries += f.length;
+    }
+    const batch = writeBatch(db);
+    for(const g in gens) batch.set(doc(db, 'catalog', 'g' + g), {list:gens[g].sort((a, b) => a.i - b.i)});
+    batch.set(doc(db, 'catalog', 'meta'), {species:species.length, entries, updatedAt:serverTimestamp()});
+    await batch.commit();
+    await loadCatalog();
+    P.hide(); renderAll();
+    toast(`Catalogue à jour : ${species.length} espèces, ${entries} entrées`);
+  } catch(e){ console.error(e); P.hide(); alert('Échec de la synchronisation : ' + e.message); }
+}
+async function importAvail(g){
+  const slugs = (g.vg || '').split(',').map(x => x.trim()).filter(Boolean);
+  const set = new Set(), bad = [];
+  for(const sl of slugs){
+    const vg = await jget(API + 'version-group/' + sl);
+    if(!vg){ bad.push(sl); continue; }
+    for(const pd of vg.pokedexes){
+      if(pd.name === 'national') continue;
+      const d = await jget(pd.url);
+      ((d && d.pokemon_entries) || []).forEach(e => set.add(idFromUrl(e.pokemon_species.url)));
+    }
+  }
+  if(set.size) await setDoc(doc(db, 'config', 'avail'), {[g.id]:[...set].sort((a, b) => a - b)}, {merge:true});
+  return {n:set.size, bad};
+}
+
+/* ---------- Modale générique ---------- */
+function openModal(render){ S.modalRender = render; render(); $('#ovModal').classList.add('show'); $('#modal').scrollTop = 0; document.body.style.overflow = 'hidden'; }
+function closeModal(){ $('#ovModal').classList.remove('show'); S.modalRender = null; if(!S.sheetSid) document.body.style.overflow = ''; }
+const mhead = t => `<div class="shead"><div class="h1" style="font-size:19px">${t}</div><button class="ib" data-a="mclose">✕</button></div>`;
+$('#ovModal').addEventListener('click', ev => {
+  if(ev.target.id === 'ovModal') return closeModal();
+  const b = ev.target.closest('[data-a]'); if(!b || b.disabled) return;
+  const a = b.dataset.a, i = +b.dataset.i;
+  const acts = {
+    mclose: closeModal,
+    gdef: () => saveGames(structuredClone(DEFAULT_GAMES)),
+    gup: () => { if(i > 0){ const l = [...S.games]; [l[i - 1], l[i]] = [l[i], l[i - 1]]; saveGames(l); } },
+    gdn: () => { if(i < S.games.length - 1){ const l = [...S.games]; [l[i + 1], l[i]] = [l[i], l[i + 1]]; saveGames(l); } },
+    ged: () => { S.editGame = {...S.games[i]}; renderGames(); $('#gN').scrollIntoView({behavior:'smooth', block:'center'}); },
+    gcancel: () => { S.editGame = null; renderGames(); },
+    gdel: async () => {
+      const g = S.games[i]; if(!confirm(`Supprimer « ${g.n} » et sa liste de disponibilité ?`)) return;
+      await saveGames(S.games.filter((_, k) => k !== i));
+      await setDoc(doc(db, 'config', 'avail'), {[g.id]:deleteField()}, {merge:true});
+    },
+    gsave: saveGameForm,
+    gimp: async () => {
+      const g = S.games[i]; b.disabled = true; b.textContent = '…';
+      try { const r = await importAvail(g); toast(`${g.a} : ${r.n} Pokémon disponibles${r.bad.length ? ' · introuvable : ' + r.bad.join(', ') : ''}`); }
+      catch(e){ toast(e.message); }
+      renderGames();
+    },
+    gimpall: async () => {
+      const list = S.games.filter(g => g.vg); if(!list.length) return;
+      if(!confirm(`Importer la disponibilité de ${list.length} jeux depuis PokéAPI ? Les listes existantes seront remplacées.`)) return;
+      P.show('Import des disponibilités'); const bad = [];
+      for(let k = 0; k < list.length; k++){
+        P.set(list[k].n, k, list.length);
+        try { const r = await importAvail(list[k]); bad.push(...r.bad); } catch(e){ bad.push(list[k].a); }
+      }
+      P.hide(); toast(bad.length ? 'Terminé · introuvable : ' + bad.join(', ') : 'Disponibilités importées');
+    },
+    uid: () => { navigator.clipboard?.writeText(S.user.uid); toast('UID copié'); },
+    exp: exportJson,
+    imp: () => $('#fileImp').click(),
+    reset: async () => {
+      if(!confirm('Effacer toute ta progression ? Cette action est définitive (pense à exporter avant).')) return;
+      S.prog = {}; await updateDoc(uref(), {p:{}}); renderAll(); toast('Progression réinitialisée');
+    },
+    logout: async () => { await signOut(auth); location.reload(); }
+  };
+  if(acts[a]) acts[a]();
+});
+$('#ovModal').addEventListener('change', ev => {
+  const k = ev.target.dataset.kind; if(!k) return;
+  S.settings.kinds[k] = ev.target.checked; saveSettings(); renderAll();
+});
+
+/* ---------- Jeux ---------- */
+async function saveGames(list){ await setDoc(doc(db, 'config', 'games'), {list}).catch(() => toast('Échec')); S.games = list; S.editGame = null; renderGames(); }
+function openGames(){ S.editGame = null; openModal(renderGames); }
+function renderGames(){
+  if(!$('#ovModal').classList.contains('show') && S.modalRender !== renderGames) return;
+  let h = mhead('Gérer les jeux') + `<p class="mute sm" style="font-weight:600">Le champ PokéAPI liste les version-groups (séparés par des virgules) utilisés pour importer automatiquement la disponibilité depuis les Pokédex régionaux. Tu peux ensuite corriger à la main dans chaque fiche.</p>`;
+  if(!S.games.length) h += `<button class="btn pri" data-a="gdef">Initialiser avec la liste par défaut</button>`;
+  S.games.forEach((g, i) => {
+    h += `<div class="grow"><span class="dot" style="background:${g.c}"></span><div style="flex:1 1 160px;min-width:0"><b>${esc(g.n)}</b> <span class="mute sm">${esc(g.a)} · ${g.gen ? 'Gen ' + g.gen : 'hors gen'} · ${(S.avail[g.id] && S.avail[g.id].size) || 0} dispo</span><div class="mute sm">${esc(g.vg || '—')}</div></div>` +
+      `<button class="btn sm" data-a="gup" data-i="${i}">↑</button><button class="btn sm" data-a="gdn" data-i="${i}">↓</button>` +
+      `<button class="btn sm" data-a="gimp" data-i="${i}" ${g.vg ? '' : 'disabled'}>⇩ Dispo</button><button class="btn sm" data-a="ged" data-i="${i}">✎</button><button class="btn sm dan" data-a="gdel" data-i="${i}">🗑</button></div>`;
+  });
+  const e = S.editGame || {};
+  h += `<div class="sec">${e.id ? 'Modifier « ' + esc(e.n) + ' »' : 'Ajouter un jeu'}</div><div class="gform">` +
+    `<input class="inp" id="gN" placeholder="Nom (ex : Écarlate / Violet)" value="${esc(e.n || '')}">` +
+    `<input class="inp" id="gA" placeholder="Abréviation (EV)" value="${esc(e.a || '')}">` +
+    `<input class="inp" id="gG" type="number" min="0" max="20" placeholder="Génération" value="${e.gen ?? ''}">` +
+    `<input class="inp" id="gC" type="color" value="${e.c || '#7c5cff'}">` +
+    `<input class="inp" id="gV" placeholder="PokéAPI : scarlet-violet,the-teal-mask" value="${esc(e.vg || '')}">` +
+    `<div class="full" style="display:flex;gap:6px"><button class="btn pri" data-a="gsave">Enregistrer</button>${e.id ? '<button class="btn" data-a="gcancel">Annuler</button>' : ''}</div></div>`;
+  if(S.games.some(g => g.vg)) h += `<div class="sec">Import groupé</div><button class="btn" data-a="gimpall">⇩ Importer la dispo de tous les jeux</button>`;
+  $('#modal').innerHTML = h;
+}
+function saveGameForm(){
+  const n = $('#gN').value.trim(), a = $('#gA').value.trim();
+  if(!n || !a) return toast('Nom et abréviation requis');
+  const g = {id:(S.editGame && S.editGame.id) || ('g' + Date.now().toString(36)), n, a, c:$('#gC').value, gen:+$('#gG').value || 0, vg:$('#gV').value.trim()};
+  const l = [...S.games]; const i = l.findIndex(x => x.id === g.id);
+  if(i >= 0) l[i] = g; else l.push(g);
+  saveGames(l); toast(i >= 0 ? 'Jeu modifié' : 'Jeu ajouté');
+}
+
+/* ---------- Statistiques ---------- */
+function srow(label, a, b, color){ return `<div class="srow"><span>${label}</span><div class="sbar"><i style="width:${pct(a, b)}%;${color ? 'background:' + color : ''}"></i></div><span style="text-align:right">${a}/${b}</span></div>`; }
+function openStats(){ openModal(renderStats); }
+function renderStats(){
+  const all = tracked(), t = tally(all);
+  let h = mhead('Statistiques');
+  h += `<div class="big4" style="margin-top:12px"><div><b>${pct(t.c, t.n)}%</b><small>${t.c}/${t.n} capturés</small></div><div><b style="color:var(--gold)">${t.s}</b><small>shiny</small></div><div><b style="color:var(--cyan)">${t.iv}</b><small>IV parfaits</small></div><div><b style="color:var(--home)">${pct(t.h, t.n)}%</b><small>living dex HOME</small></div></div>`;
+  h += `<div class="sec">Par génération</div>`;
+  for(const g of S.gens){ const x = tally(tracked(sp => sp.g === g)); h += srow(`Gen ${g} · ${GEN[g] || ''}`, x.c, x.n); }
+  h += `<div class="sec">Par type de forme</div>`;
+  for(const k of Object.keys(KINDS)){ const l = all.filter(e => e.kind === k); if(l.length){ const x = tally(l); h += srow(KINDS[k], x.c, x.n, 'var(--accent)'); } }
+  h += `<div class="sec">Shiny & HOME</div>` + srow('✨ Shiny', t.s, t.n, 'var(--gold)') + srow('IV 100%', t.iv, t.n, 'var(--cyan)') + srow('HOME', t.h, t.n, 'var(--home)');
+  const gl = S.games.filter(g => S.avail[g.id] && S.avail[g.id].size);
+  if(gl.length){
+    h += `<div class="sec">Par jeu (espèces disponibles capturées)</div>`;
+    for(const g of gl){
+      const av = S.avail[g.id]; let c = 0;
+      av.forEach(sid => { const sp = S.bySid[sid]; if(sp && (S.prog[sp.f[0].key] || {}).c) c++; });
+      h += srow(esc(g.a), c, av.size, g.c);
+    }
+  }
+  const byGame = {}; for(const k in S.prog){ const g = S.prog[k].g; if(g) byGame[g] = (byGame[g] || 0) + 1; }
+  const used = S.games.filter(g => byGame[g.id]);
+  if(used.length){
+    h += `<div class="sec">Jeu de capture renseigné</div><div class="gchips">` + used.map(g => `<span class="gchip on" style="--gc:${g.c}">${esc(g.a)} · ${byGame[g.id]}</span>`).join('') + `</div>`;
+  }
+  $('#modal').innerHTML = h;
+}
+
+/* ---------- Réglages ---------- */
+function openSettings(){ openModal(renderSettings); }
+function renderSettings(){
+  const u = S.user;
+  const type = u.isAnonymous ? 'Invité (sans compte)' : (u.providerData[0] && u.providerData[0].providerId === 'google.com' ? 'Google' : 'E-mail');
+  let h = mhead('Réglages');
+  h += `<div class="sec">Compte</div><div class="grow"><div style="flex:1"><b>${esc(u.displayName || u.email || 'Invité')}</b><div class="mute sm">${type}${S.isAdmin ? ' · administrateur' : ''}</div></div><button class="btn sm dan" data-a="logout">Se déconnecter</button></div>`;
+  h += `<div class="grow"><span class="mute sm" style="font-weight:700">UID</span><span class="code">${esc(u.uid)}</span><button class="btn sm" data-a="uid">Copier</button></div>`;
+  h += `<div class="sec">Formes suivies</div><p class="mute sm" style="margin-top:0;font-weight:600">Les formes cochées comptent dans tes statistiques et apparaissent dans la grille quand « Formes » est activé.</p>`;
+  for(const k of ['regional','mega','gmax','alt','cosm']){
+    const n = Object.values(S.byKey).filter(e => e.kind === k && !S.ov.hidden[e.key]).length;
+    h += `<label class="chk"><input type="checkbox" data-kind="${k}" ${S.settings.kinds[k] ? 'checked' : ''}> ${KINDS[k]} <span class="mute sm" style="margin-left:auto">${n}</span></label>`;
+  }
+  h += `<div class="sec">Sauvegarde</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-a="exp">⇩ Exporter ma progression</button><button class="btn" data-a="imp">⇧ Importer</button><button class="btn dan" data-a="reset">Réinitialiser</button></div>`;
+  h += `<p class="mute sm" style="margin-top:22px;text-align:center">Pokédex v${APP_V} · données PokéAPI</p>`;
+  $('#modal').innerHTML = h;
+}
+function exportJson(){
+  const data = {app:'pokedex', v:1, date:new Date().toISOString(), p:S.prog, settings:S.settings};
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type:'application/json'}));
+  a.download = 'pokedex-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$('#fileImp').addEventListener('change', async ev => {
+  const f = ev.target.files[0]; ev.target.value = ''; if(!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if(d.app !== 'pokedex' || !d.p) return toast('Fichier non reconnu');
+    if(!confirm('Remplacer ta progression actuelle par ce fichier ?')) return;
+    await updateDoc(uref(), {p:d.p, settings:{...DEF_SET, ...(d.settings || {})}});
+    toast('Progression importée');
+  } catch(e){ toast('Import impossible : ' + e.message); }
+});
+
+/* ---------- PWA ---------- */
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "Pokédex — Erwan",
+  "short_name": "Pokédex",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0f24",
+  "theme_color": "#0b0f24",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
