@@ -243,7 +243,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.4";
+const APP_V = "1.5";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -264,24 +264,45 @@ const TYPE_FR = ['Normal','Combat','Vol','Poison','Sol','Roche','Insecte','Spect
 const TYPE_C = ['#9fa19f','#ff8000','#81b9ef','#9141cb','#915121','#afa981','#91a119','#704170','#60a1b8','#e62829','#2980ef','#3fa129','#e0ad00','#ef4179','#3dcef3','#5060e1','#624d4e','#ef70ef'];
 const STATUS = [['all','Tous'],['miss','Manquants'],['c','Capturés'],['nos','Shiny manquants'],['s','Shiny'],['noiv','IV manquants'],['noh','Pas dans HOME']];
 const DEF_SET = {kinds:{fem:true,regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true};
+const SW = 'sword-shield,the-isle-of-armor,the-crown-tundra', SV = 'scarlet-violet,the-teal-mask,the-indigo-disk';
 const DEFAULT_GAMES = [
-  {id:'rby',n:'Rouge / Bleu / Jaune',a:'RBJ',c:'#e3350d',gen:1,vg:'red-blue,yellow'},
-  {id:'gsc',n:'Or / Argent / Cristal',a:'OAC',c:'#c9a227',gen:2,vg:'gold-silver,crystal'},
-  {id:'rse',n:'Rubis / Saphir / Émeraude',a:'RSE',c:'#2f9e6e',gen:3,vg:'ruby-sapphire,emerald'},
-  {id:'frlg',n:'Rouge Feu / Vert Feuille',a:'RFVF',c:'#ff7f2a',gen:3,vg:'firered-leafgreen'},
-  {id:'dpp',n:'Diamant / Perle / Platine',a:'DPP',c:'#7f8fc9',gen:4,vg:'diamond-pearl,platinum'},
-  {id:'hgss',n:'HeartGold / SoulSilver',a:'HGSS',c:'#d4af37',gen:4,vg:'heartgold-soulsilver'},
-  {id:'bw',n:'Noir / Blanc',a:'NB',c:'#8a8a8a',gen:5,vg:'black-white'},
-  {id:'b2w2',n:'Noir 2 / Blanc 2',a:'N2B2',c:'#3a6ea5',gen:5,vg:'black-2-white-2'},
-  {id:'xy',n:'X / Y',a:'XY',c:'#1f6fd1',gen:6,vg:'x-y'},
-  {id:'oras',n:'Rubis Oméga / Saphir Alpha',a:'ROSA',c:'#c0392b',gen:6,vg:'omega-ruby-alpha-sapphire'},
-  {id:'sm',n:'Soleil / Lune',a:'SL',c:'#f39c12',gen:7,vg:'sun-moon'},
-  {id:'usum',n:'Ultra-Soleil / Ultra-Lune',a:'USUL',c:'#e67e22',gen:7,vg:'ultra-sun-ultra-moon'},
-  {id:'lgpe',n:"Let's Go Pikachu / Évoli",a:'LGPE',c:'#f5c518',gen:7,vg:'lets-go-pikachu-lets-go-eevee'},
-  {id:'swsh',n:'Épée / Bouclier',a:'EB',c:'#00a1e9',gen:8,vg:'sword-shield,the-isle-of-armor,the-crown-tundra'},
-  {id:'bdsp',n:'Diamant Étincelant / Perle Scintillante',a:'DEPS',c:'#6c8ebf',gen:8,vg:'brilliant-diamond-and-shining-pearl'},
-  {id:'pla',n:'Légendes Pokémon : Arceus',a:'LPA',c:'#8b6f47',gen:8,vg:'legends-arceus'},
-  {id:'sv',n:'Écarlate / Violet',a:'EV',c:'#d63031',gen:9,vg:'scarlet-violet,the-teal-mask,the-indigo-disk'},
+  {id:'rouge',n:'Rouge',a:'R',c:'#e3350d',gen:1,vg:'red-blue'},
+  {id:'bleu',n:'Bleu',a:'Bl',c:'#2a75bb',gen:1,vg:'red-blue'},
+  {id:'jaune',n:'Jaune',a:'J',c:'#f5c518',gen:1,vg:'yellow'},
+  {id:'or',n:'Or',a:'Or',c:'#c9a227',gen:2,vg:'gold-silver'},
+  {id:'argent',n:'Argent',a:'Ag',c:'#b8c0c8',gen:2,vg:'gold-silver'},
+  {id:'cristal',n:'Cristal',a:'Cr',c:'#4fc3f7',gen:2,vg:'crystal'},
+  {id:'rubis',n:'Rubis',a:'Ru',c:'#c0392b',gen:3,vg:'ruby-sapphire'},
+  {id:'saphir',n:'Saphir',a:'Sa',c:'#1f4fbf',gen:3,vg:'ruby-sapphire'},
+  {id:'emeraude',n:'Émeraude',a:'Em',c:'#2f9e6e',gen:3,vg:'emerald'},
+  {id:'rougefeu',n:'Rouge Feu',a:'RF',c:'#ff7f2a',gen:3,vg:'firered-leafgreen'},
+  {id:'vertfeuille',n:'Vert Feuille',a:'VF',c:'#7cb342',gen:3,vg:'firered-leafgreen'},
+  {id:'diamant',n:'Diamant',a:'Di',c:'#7f8fc9',gen:4,vg:'diamond-pearl'},
+  {id:'perle',n:'Perle',a:'Pe',c:'#e8a0b8',gen:4,vg:'diamond-pearl'},
+  {id:'platine',n:'Platine',a:'Pt',c:'#9e9e9e',gen:4,vg:'platinum'},
+  {id:'heartgold',n:'HeartGold',a:'HG',c:'#d4af37',gen:4,vg:'heartgold-soulsilver'},
+  {id:'soulsilver',n:'SoulSilver',a:'SS',c:'#b0bec5',gen:4,vg:'heartgold-soulsilver'},
+  {id:'noir',n:'Noir',a:'N',c:'#6d6d6d',gen:5,vg:'black-white'},
+  {id:'blanc',n:'Blanc',a:'Bc',c:'#dcdcdc',gen:5,vg:'black-white'},
+  {id:'noir2',n:'Noir 2',a:'N2',c:'#3a6ea5',gen:5,vg:'black-2-white-2'},
+  {id:'blanc2',n:'Blanc 2',a:'B2',c:'#e57373',gen:5,vg:'black-2-white-2'},
+  {id:'x',n:'X',a:'X',c:'#1f6fd1',gen:6,vg:'x-y'},
+  {id:'y',n:'Y',a:'Y',c:'#d63031',gen:6,vg:'x-y'},
+  {id:'rubisomega',n:'Rubis Oméga',a:'RΩ',c:'#c0392b',gen:6,vg:'omega-ruby-alpha-sapphire'},
+  {id:'saphiralpha',n:'Saphir Alpha',a:'Sα',c:'#1f4fbf',gen:6,vg:'omega-ruby-alpha-sapphire'},
+  {id:'soleil',n:'Soleil',a:'So',c:'#f39c12',gen:7,vg:'sun-moon'},
+  {id:'lune',n:'Lune',a:'Lu',c:'#7e57c2',gen:7,vg:'sun-moon'},
+  {id:'ultrasoleil',n:'Ultra-Soleil',a:'US',c:'#e67e22',gen:7,vg:'ultra-sun-ultra-moon'},
+  {id:'ultralune',n:'Ultra-Lune',a:'UL',c:'#5e35b1',gen:7,vg:'ultra-sun-ultra-moon'},
+  {id:'letsgopikachu',n:"Let's Go Pikachu",a:'LGP',c:'#f5c518',gen:7,vg:'lets-go-pikachu-lets-go-eevee'},
+  {id:'letsgoevoli',n:"Let's Go Évoli",a:'LGE',c:'#a1887f',gen:7,vg:'lets-go-pikachu-lets-go-eevee'},
+  {id:'epee',n:'Épée',a:'Ép',c:'#00a1e9',gen:8,vg:SW},
+  {id:'bouclier',n:'Bouclier',a:'Bo',c:'#e91e63',gen:8,vg:SW},
+  {id:'diamantet',n:'Diamant Étincelant',a:'DE',c:'#6c8ebf',gen:8,vg:'brilliant-diamond-and-shining-pearl'},
+  {id:'perlesc',n:'Perle Scintillante',a:'PS',c:'#e8a0b8',gen:8,vg:'brilliant-diamond-and-shining-pearl'},
+  {id:'arceus',n:'Légendes Pokémon : Arceus',a:'LPA',c:'#8b6f47',gen:8,vg:'legends-arceus'},
+  {id:'ecarlate',n:'Écarlate',a:'Éc',c:'#d63031',gen:9,vg:SV},
+  {id:'violet',n:'Violet',a:'Vi',c:'#8e44ad',gen:9,vg:SV},
   {id:'za',n:'Légendes Pokémon : Z-A',a:'LZA',c:'#27ae60',gen:9,vg:'legends-za'},
   {id:'go',n:'Pokémon GO',a:'GO',c:'#3d7dca',gen:0,vg:''},
   {id:'home',n:'Pokémon HOME',a:'HOME',c:'#26c6da',gen:0,vg:''}
@@ -822,6 +843,24 @@ $('#ovModal').addEventListener('click', ev => {
   const acts = {
     mclose: closeModal,
     gdef: () => saveGames(structuredClone(DEFAULT_GAMES)),
+    gsplit: async () => {
+      if(!confirm('Remplacer toute la liste de jeux par la liste avec chaque version séparée (Rouge, Bleu, Jaune, Or, Argent…) ?\n\nLes disponibilités actuelles seront effacées puis réimportées depuis PokéAPI (1 à 2 minutes). Tu retireras ensuite les exclusivités avec « ✏️ Éditer la dispo ».')) return;
+      const list = structuredClone(DEFAULT_GAMES);
+      await saveGames(list);
+      await setDoc(doc(db, 'config', 'avail'), {});
+      S.avail = {};
+      P.show('Import des disponibilités'); const bad = new Set(); const cache = {};
+      const todo = list.filter(g => g.vg);
+      for(let k = 0; k < todo.length; k++){
+        const g = todo[k]; P.set(g.n, k, todo.length);
+        try {
+          if(cache[g.vg]){ await setDoc(doc(db, 'config', 'avail'), {[g.id]:cache[g.vg]}, {merge:true}); continue; }
+          const r = await importAvail(g); r.bad.forEach(x => bad.add(x));
+          if(S.avail[g.id] || r.n){ const snap = await getDoc(doc(db, 'config', 'avail')); cache[g.vg] = (snap.data() || {})[g.id] || []; }
+        } catch(e){ bad.add(g.n); }
+      }
+      P.hide(); toast(bad.size ? 'Terminé · introuvable : ' + [...bad].join(', ') : 'Versions séparées et disponibilités importées');
+    },
     gup: () => { if(i > 0){ const l = [...S.games]; [l[i - 1], l[i]] = [l[i], l[i - 1]]; saveGames(l); } },
     gdn: () => { if(i < S.games.length - 1){ const l = [...S.games]; [l[i + 1], l[i]] = [l[i], l[i + 1]]; saveGames(l); } },
     ged: () => { S.editGame = {...S.games[i]}; renderGames(); $('#gN').scrollIntoView({behavior:'smooth', block:'center'}); },
@@ -882,6 +921,7 @@ function renderGames(){
   if(!$('#ovModal').classList.contains('show') && S.modalRender !== renderGames) return;
   let h = mhead('Gérer les jeux') + `<p class="mute sm" style="font-weight:600">Le champ PokéAPI liste les version-groups (séparés par des virgules) utilisés pour importer automatiquement la disponibilité depuis les Pokédex régionaux. Pour distinguer les versions (ex. Rouge et Bleu), importe la dispo du jeu groupé, duplique-le avec ⧉, puis retire les exclusivités avec « ✏️ Éditer la dispo » dans la barre admin.</p>`;
   if(!S.games.length) h += `<button class="btn pri" data-a="gdef">Initialiser avec la liste par défaut</button>`;
+  else if(!S.games.some(g => g.id === 'rouge')) h += `<div class="grow" style="border-color:var(--accent)"><div style="flex:1 1 200px"><b>Séparer les versions</b><div class="mute sm">Remplace la liste par une ligne par version (Rouge, Bleu, Jaune…) et réimporte les dispos.</div></div><button class="btn pri" data-a="gsplit">Séparer les versions</button></div>`;
   S.games.forEach((g, i) => {
     h += `<div class="grow"><span class="dot" style="background:${g.c}"></span><div style="flex:1 1 160px;min-width:0"><b>${esc(g.n)}</b> <span class="mute sm">${esc(g.a)} · ${g.gen ? 'Gen ' + g.gen : 'hors gen'} · ${(S.avail[g.id] && S.avail[g.id].size) || 0} dispo</span><div class="mute sm">${esc(g.vg || '—')}</div></div>` +
       `<button class="btn sm" data-a="gup" data-i="${i}">↑</button><button class="btn sm" data-a="gdn" data-i="${i}">↓</button>` +
