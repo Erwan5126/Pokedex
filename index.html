@@ -96,6 +96,10 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .grid.avedit .qc{display:none}
 .avbar{display:none;position:sticky;top:calc(var(--hh) + 44px);z-index:80;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 10px;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;font-weight:800}
 .avbar.show{display:flex}
+.avbar .chips{flex-basis:100%}
+.avbar .chip{padding:5px 10px}
+.frow.na{opacity:.38;filter:grayscale(.85)}
+.fk.na{color:var(--mute)}
 .empty{text-align:center;padding:60px 20px;color:var(--mute);font-weight:700}
 .empty .btn{margin-top:14px}
 
@@ -243,7 +247,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.5";
+const APP_V = "1.6";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -307,6 +311,17 @@ const DEFAULT_GAMES = [
   {id:'go',n:'Pokémon GO',a:'GO',c:'#3d7dca',gen:0,vg:''},
   {id:'home',n:'Pokémon HOME',a:'HOME',c:'#26c6da',gen:0,vg:''}
 ];
+/* Formes présentes par défaut dans chaque jeu — ajustables forme par forme en mode admin */
+const KNOWN_G = new Set(DEFAULT_GAMES.map(g => g.id));
+const MEGA_G = new Set(['x','y','rubisomega','saphiralpha','soleil','lune','ultrasoleil','ultralune','letsgopikachu','letsgoevoli','za','go']);
+const GMAX_G = new Set(['epee','bouclier','go']);
+const REG_G = {
+  alola:['soleil','lune','ultrasoleil','ultralune','letsgopikachu','letsgoevoli','epee','bouclier','ecarlate','violet','go','home'],
+  galar:['epee','bouclier','ecarlate','violet','go','home'],
+  hisui:['arceus','ecarlate','violet','go','home'],
+  paldea:['ecarlate','violet','go','home']
+};
+const REG_GEN = {alola:7, galar:8, hisui:8, paldea:9};
 const FB = "if(this.dataset.fb&&this.src!==this.dataset.fb){this.src=this.dataset.fb}else{this.onerror=null;this.style.visibility='hidden'}";
 
 /* ---------- Utilitaires ---------- */
@@ -327,10 +342,10 @@ function show(id){ for(const s of ['boot','setup','login','app']) $('#'+s).hidde
 const S = {
   user:null, isAdmin:false, adminMode:false,
   species:[], gens:[], byKey:{}, bySid:{},
-  games:[], avail:{}, ov:{hidden:{}, names:{}},
+  games:[], avail:{}, availF:{}, ov:{hidden:{}, names:{}},
   prog:{}, settings:structuredClone(DEF_SET),
   view:{gen:0, q:'', status:'all', game:'', type:''},
-  lastVisible:[], avEdit:'', sheetSid:null, sheetShiny:false, editGame:null
+  lastVisible:[], lastForms:[], avEdit:'', avKind:'', sheetSid:null, sheetShiny:false, editGame:null
 };
 const ename = e => S.ov.names[e.key] || e.raw;
 const etypes = e => e.t || e.sp.f[0].t || [];
@@ -338,6 +353,60 @@ const isTracked = e => e.kind === 'base' || (!S.ov.hidden[e.key] && !!S.settings
 const gameById = id => S.games.find(g => g.id === id);
 const sprUrl = (e, shiny) => SPR + (shiny ? 'shiny/' : '') + e.spr + '.png';
 const artUrl = (e, shiny) => (typeof e.spr === 'number' || String(e.spr).startsWith('female/')) ? SPR + 'other/home/' + (shiny ? 'shiny/' : '') + e.spr + '.png' : sprUrl(e, shiny);
+
+/* ---------- Disponibilité par forme ----------
+   config/avail : { <jeu>: [n° d'espèces], F_<jeu>: {i:[clés forcées dispo], x:[clés forcées absentes]} }
+   Une forme est dispo si son espèce est dans la liste du jeu ET (forcée dispo, ou règle par défaut sans exclusion). */
+function formDefault(g, e){
+  if(!g) return false;
+  const known = KNOWN_G.has(g.id), gen = g.gen || 0;
+  switch(e.kind){
+    case 'base': return true;
+    case 'fem': return gen === 0 || gen >= 4;
+    case 'mega': return known ? MEGA_G.has(g.id) : (gen === 6 || gen === 7);
+    case 'gmax': return known ? GMAX_G.has(g.id) : gen === 8;
+    case 'regional': {
+      const r = (e.key.match(/-(alola|galar|hisui|paldea)(-|$)/) || [])[1];
+      if(!r) return gen === 0 || gen >= 7;
+      return known ? REG_G[r].includes(g.id) : (gen === 0 || gen >= REG_GEN[r]);
+    }
+    case 'alt': return !e.key.includes('-totem');
+    default: return true;
+  }
+}
+function formAvail(gid, e){
+  const av = S.avail[gid]; if(!av || !av.has(e.sp.i)) return false;
+  const o = S.availF[gid];
+  if(o){ if(o.i.has(e.key)) return true; if(o.x.has(e.key)) return false; }
+  return formDefault(gameById(gid), e);
+}
+function setSpeciesAvail(gid, sp, want){
+  const g = gameById(gid);
+  if(!S.avail[gid]) S.avail[gid] = new Set();
+  if(!S.availF[gid]) S.availF[gid] = {i:new Set(), x:new Set()};
+  const o = S.availF[gid];
+  for(const e of sp.f){ o.i.delete(e.key); o.x.delete(e.key); }
+  if(!want.size){ S.avail[gid].delete(sp.i); return; }
+  S.avail[gid].add(sp.i);
+  for(const e of sp.f){ const w = want.has(e.key); if(w !== formDefault(g, e)) (w ? o.i : o.x).add(e.key); }
+}
+function persistAvail(gid){
+  const o = S.availF[gid] || {i:new Set(), x:new Set()};
+  return setDoc(doc(db, 'config', 'avail'), {
+    [gid]: [...(S.avail[gid] || [])].sort((a, b) => a - b),
+    ['F_' + gid]: {i:[...o.i], x:[...o.x]}
+  }, {merge:true}).catch(err => { console.error(err); toast('Échec de la sauvegarde'); });
+}
+function setFormsAvail(gid, keys, on){
+  const bySp = new Map();
+  for(const k of keys){
+    const e = S.byKey[k]; if(!e) continue;
+    if(!bySp.has(e.sp)) bySp.set(e.sp, new Set(e.sp.f.filter(x => formAvail(gid, x)).map(x => x.key)));
+    const w = bySp.get(e.sp); on ? w.add(k) : w.delete(k);
+  }
+  bySp.forEach((w, sp) => setSpeciesAvail(gid, sp, w));
+  return persistAvail(gid);
+}
 
 /* ---------- Firebase ---------- */
 const configured = !String(FIREBASE_CONFIG.apiKey).startsWith('À_');
@@ -396,7 +465,14 @@ async function start(){
     if(!snap.metadata.hasPendingWrites) scheduleRender();
   });
   onSnapshot(doc(db, 'config', 'games'), s => { S.games = (s.data() || {}).list || []; scheduleRender(); });
-  onSnapshot(doc(db, 'config', 'avail'), s => { const d = s.data() || {}; S.avail = {}; for(const k in d) S.avail[k] = new Set(d[k]); scheduleRender(); });
+  onSnapshot(doc(db, 'config', 'avail'), s => {
+    const d = s.data() || {}; S.avail = {}; S.availF = {};
+    for(const k in d){
+      if(k.startsWith('F_')){ const v = d[k] || {}; S.availF[k.slice(2)] = {i:new Set(v.i || []), x:new Set(v.x || [])}; }
+      else if(Array.isArray(d[k])) S.avail[k] = new Set(d[k]);
+    }
+    scheduleRender();
+  });
   onSnapshot(doc(db, 'config', 'overrides'), s => { const d = s.data() || {}; S.ov = {hidden:d.hidden || {}, names:d.names || {}}; scheduleRender(); });
   $('#bAdmin').hidden = !S.isAdmin;
   S.adminMode = S.isAdmin && localStorage.getItem('pdx-admin') === '1';
@@ -496,7 +572,13 @@ function renderFilters(){
     $('#aAv').innerHTML = '<option value="">✏️ Éditer la dispo par jeu…</option>' + S.games.map(g => `<option value="${g.id}" ${g.id === S.avEdit ? 'selected' : ''}>✏️ Dispo : ${esc(g.n)}</option>`).join('');
   }
 }
-const spEntries = sp => sp.f.filter(isTracked);
+// Formes suivies ; avec un filtre jeu actif, seulement celles dispo dans ce jeu (compteurs et filtres de statut)
+function spEntries(sp){
+  const l = sp.f.filter(isTracked), gid = S.view.game;
+  if(!gid || (S.adminMode && S.avEdit)) return l;
+  const a = l.filter(e => formAvail(gid, e));
+  return a.length ? a : l;
+}
 function statusOk(sp){
   const l = spEntries(sp), pb = S.prog[sp.f[0].key] || {};
   const some = f => l.some(e => !(S.prog[e.key] || {})[f]);
@@ -535,13 +617,18 @@ function cardHtml(sp){
   let c = 0, s = 0, iv = 0, hm = 0;
   for(const e of l){ const p = S.prog[e.key] || {}; if(p.c) c++; if(p.s) s++; if(p.iv) iv++; if(p.h) hm++; }
   const g = pb.g && gameById(pb.g);
-  const avon = S.adminMode && S.avEdit && S.avail[S.avEdit] && S.avail[S.avEdit].has(sp.i);
-  return `<div class="card${c ? ' got' : ''}${s ? ' sh' : ''}${l.length > 1 && c === l.length ? ' full' : ''}${avon ? ' avon' : ''}" data-s="${sp.i}">` +
+  return `<div class="card${c ? ' got' : ''}${s ? ' sh' : ''}${l.length > 1 && c === l.length ? ' full' : ''}" data-s="${sp.i}">` +
     (l.length > 1 ? `<span class="fp" title="Formes capturées">${c}/${l.length}</span>` : '') +
     `<button class="qc" aria-label="Capturé">✓</button>` +
     `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(base, false)}" data-fb="${artUrl(base, false)}" onerror="${FB}" alt="">` +
     `<div class="num">#${pad(sp.i)}</div><div class="nm">${esc(sp.n)}</div>` +
     `<div class="bd">${s ? `<span class="s">✨${s > 1 ? s : ''}</span>` : ''}${iv ? '<span class="iv">IV</span>' : ''}${hm ? '<span class="h">H</span>' : ''}${g ? `<span>${esc(g.a)}</span>` : ''}</div></div>`;
+}
+function formCardHtml(e, gid){
+  return `<div class="card${formAvail(gid, e) ? ' avon' : ''}" data-k="${esc(e.key)}">` +
+    `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(e, false)}" data-fb="${artUrl(e, false)}" onerror="${FB}" alt="">` +
+    `<div class="num">#${pad(e.sp.i)}</div><div class="nm">${esc(ename(e))}</div>` +
+    (e.kind !== 'base' ? `<div class="fk">${KINDS[e.kind] || ''}</div>` : '') + `</div>`;
 }
 function renderGrid(){
   const empty = $('#empty');
@@ -556,15 +643,29 @@ function renderGrid(){
   }
   const list = visibleSpecies();
   S.lastVisible = list;
-  const vs = new Set(list.map(sp => sp.i)), st = spTally(sp => vs.has(sp.i));
-  $('#count').textContent = `${list.length} Pokémon · ${st.any} capturé${st.any > 1 ? 's' : ''} · ★ ${st.all} complet${st.all > 1 ? 's' : ''}`;
   const ag = S.adminMode && S.avEdit ? gameById(S.avEdit) : null;
   $('#grid').classList.toggle('avedit', !!ag);
   $('#grid').style.setProperty('--gc', ag ? ag.c : '');
-  $('#grid').innerHTML = list.map(cardHtml).join('');
-  renderAvBar(ag, list);
-  empty.hidden = list.length > 0;
-  if(!list.length) empty.textContent = 'Aucun Pokémon ne correspond à ces filtres.';
+  let n;
+  if(ag){
+    // Édition de la dispo : une carte par forme
+    const forms = [];
+    for(const sp of list) for(const e of sp.f){
+      if(S.ov.hidden[e.key] || (S.avKind && e.kind !== S.avKind)) continue;
+      forms.push(e);
+    }
+    S.lastForms = forms; n = forms.length;
+    $('#count').textContent = `${list.length} Pokémon · ${forms.length} forme${forms.length > 1 ? 's' : ''} affichée${forms.length > 1 ? 's' : ''}`;
+    $('#grid').innerHTML = forms.map(e => formCardHtml(e, ag.id)).join('');
+  } else {
+    S.lastForms = []; n = list.length;
+    const vs = new Set(list.map(sp => sp.i)), st = spTally(sp => vs.has(sp.i));
+    $('#count').textContent = `${list.length} Pokémon · ${st.any} capturé${st.any > 1 ? 's' : ''} · ★ ${st.all} complet${st.all > 1 ? 's' : ''}`;
+    $('#grid').innerHTML = list.map(cardHtml).join('');
+  }
+  renderAvBar(ag);
+  empty.hidden = n > 0;
+  if(!n) empty.textContent = ag ? 'Aucune forme ne correspond à ces filtres.' : 'Aucun Pokémon ne correspond à ces filtres.';
 }
 function refreshCard(key){
   const e = S.byKey[key]; if(!e) return;
@@ -594,14 +695,16 @@ $('#fGame').addEventListener('change', ev => { S.view.game = ev.target.value; re
 $('#fType').addEventListener('change', ev => { S.view.type = ev.target.value; renderGrid(); });
 $('#grid').addEventListener('click', ev => {
   const card = ev.target.closest('.card'); if(!card) return;
-  const sp = S.bySid[+card.dataset.s]; if(!sp) return;
   if(S.adminMode && S.avEdit){
-    const gid = S.avEdit;
-    toggleAvail(gid, sp.i);
-    card.classList.toggle('avon', S.avail[gid].has(sp.i));
-    renderAvBar(gameById(gid), S.lastVisible);
+    const gid = S.avEdit, e = S.byKey[card.dataset.k]; if(!e) return;
+    const on = !formAvail(gid, e);
+    setFormsAvail(gid, [e.key], on);
+    // une forme ajoutée sur une espèce absente peut changer l'état des autres formes de l'espèce
+    for(const x of e.sp.f){ const el = document.querySelector(`.card[data-k="${CSS.escape(x.key)}"]`); if(el) el.classList.toggle('avon', formAvail(gid, x)); }
+    renderAvBar(gameById(gid));
     return;
   }
+  const sp = S.bySid[+card.dataset.s]; if(!sp) return;
   if(ev.target.closest('.qc')){
     const base = sp.f[0], p = S.prog[base.key] || {};
     if(p.c && (p.s || p.iv || p.h || p.g) && !confirm(`Retirer ${ename(base)} de ta collection ? Shiny, IV, HOME et jeu seront effacés.`)) return;
@@ -616,29 +719,31 @@ $('#bAdmin').onclick = () => { S.adminMode = !S.adminMode; localStorage.setItem(
 $('#aSync').onclick = syncCatalog;
 $('#aGames').onclick = openGames;
 function applyAdmin(){ $('#adminbar').classList.toggle('show', S.adminMode); $('#bAdmin').classList.toggle('on', S.adminMode); if(S.species.length) renderGrid(); }
-$('#aAv').addEventListener('change', ev => { S.avEdit = ev.target.value; renderGrid(); if(S.avEdit) toast('Touche une carte pour l\'ajouter ou la retirer de ce jeu'); });
-function renderAvBar(ag, list){
+$('#aAv').addEventListener('change', ev => { S.avEdit = ev.target.value; S.avKind = ''; renderGrid(); if(S.avEdit) toast('Touche une forme pour l\'ajouter ou la retirer de ce jeu'); });
+function renderAvBar(ag){
   const bar = $('#avbar');
   if(!ag){ bar.classList.remove('show'); bar.innerHTML = ''; return; }
-  const av = S.avail[ag.id] || new Set();
-  const sids = list.map(sp => sp.i);
-  const inView = sids.filter(s => av.has(s)).length;
-  bar.innerHTML = `<span class="dot" style="background:${ag.c}"></span><span style="flex:1 1 180px">${esc(ag.n)} · <span class="mute">${av.size} dispo au total · ${inView}/${sids.length} affichés</span></span>` +
-    `<button class="btn sm" data-av="all">Tout cocher (affichés)</button><button class="btn sm" data-av="none">Tout décocher (affichés)</button><button class="btn sm dan" data-av="quit">Terminer</button>`;
+  const sp = (S.avail[ag.id] || new Set()).size;
+  const forms = S.lastForms, on = forms.filter(e => formAvail(ag.id, e)).length;
+  const kinds = [['', 'Toutes'], ...Object.entries(KINDS)];
+  bar.innerHTML = `<span class="dot" style="background:${ag.c}"></span><span style="flex:1 1 180px">${esc(ag.n)} · <span class="mute">${sp} espèces dispo · ${on}/${forms.length} formes affichées cochées</span></span>` +
+    `<button class="btn sm" data-av="all">Tout cocher (affichées)</button><button class="btn sm" data-av="none">Tout décocher (affichées)</button><button class="btn sm dan" data-av="quit">Terminer</button>` +
+    `<div class="chips">${kinds.map(([k, l]) => `<button class="chip ${S.avKind === k ? 'on' : ''}" data-avk="${k}">${l}</button>`).join('')}</div>`;
   bar.classList.add('show');
 }
 $('#avbar').addEventListener('click', async ev => {
+  const kb = ev.target.closest('[data-avk]');
+  if(kb){ S.avKind = kb.dataset.avk; renderGrid(); return; }
   const b = ev.target.closest('[data-av]'); if(!b) return;
   const gid = S.avEdit, g = gameById(gid); if(!g) return;
-  if(b.dataset.av === 'quit'){ S.avEdit = ''; renderFilters(); renderGrid(); return; }
-  const sids = S.lastVisible.map(sp => sp.i);
-  if(!sids.length) return;
+  if(b.dataset.av === 'quit'){ S.avEdit = ''; S.avKind = ''; renderFilters(); renderGrid(); return; }
+  const keys = S.lastForms.map(e => e.key);
+  if(!keys.length) return;
   const add = b.dataset.av === 'all';
-  if(!confirm(`${add ? 'Ajouter' : 'Retirer'} ${sids.length} espèces ${add ? 'à' : 'de'} « ${g.n} » ?`)) return;
-  if(!S.avail[gid]) S.avail[gid] = new Set();
-  sids.forEach(s => add ? S.avail[gid].add(s) : S.avail[gid].delete(s));
+  if(!confirm(`${add ? 'Ajouter' : 'Retirer'} ${keys.length} forme${keys.length > 1 ? 's' : ''} ${add ? 'à' : 'de'} « ${g.n} » ?`)) return;
+  const p = setFormsAvail(gid, keys, add);
   renderGrid();
-  await setDoc(doc(db, 'config', 'avail'), {[gid]: add ? arrayUnion(...sids) : arrayRemove(...sids)}, {merge:true}).catch(() => toast('Échec'));
+  await p;
 });
 new ResizeObserver(() => document.documentElement.style.setProperty('--hh', $('#hdr').offsetHeight + 'px')).observe($('#hdr'));
 
@@ -659,12 +764,17 @@ function renderSheet(){
     `<div style="display:flex;gap:6px"><button class="ib" data-a="next" ${i < 0 || i >= l.length - 1 ? 'disabled' : ''}>›</button><button class="ib" data-a="close">✕</button></div></div>`;
   h += `<div class="hero"><div class="art" data-a="shiny" title="Basculer normal / shiny"><img crossorigin="anonymous" src="${artUrl(base, sh)}" data-fb="${sprUrl(base, sh)}" onerror="${FB}" alt=""><span class="shtag">${sh ? '✨ Shiny' : 'Normal'} ⇄</span></div>` +
     `<div style="min-width:0"><div class="h1">${esc(sp.n)}</div><div class="mute" style="font-weight:700;font-size:13px">${esc(cap(sp.e))}</div><div class="types">${typeChips(etypes(base))}</div></div></div>`;
-  h += `<div class="sec">Ma collection</div>`;
+  const fg = S.view.game ? gameById(S.view.game) : null;
+  h += `<div class="sec">Ma collection${fg ? ` · <span style="color:${fg.c}">dispo dans ${esc(fg.n)}</span>` : ''}</div>`;
   for(const e of forms){
     const p = S.prog[e.key] || {};
-    const hid = !!S.ov.hidden[e.key], off = !isTracked(e);
-    const tag = e.kind !== 'base' ? `<div class="fk">${KINDS[e.kind] || ''}${hid ? ' · masquée' : (off ? ' · non suivie' : '')}</div>` : '';
-    h += `<div class="frow ${hid || off ? 'hid' : ''}"><div class="ftop"><img crossorigin="anonymous" src="${sprUrl(e, sh)}" data-fb="${artUrl(e, sh)}" onerror="${FB}" alt=""><div class="fname">${esc(ename(e))}${tag}</div>` +
+    const hid = !!S.ov.hidden[e.key], off = !isTracked(e), na = fg && !formAvail(fg.id, e);
+    const parts = [];
+    if(e.kind !== 'base') parts.push(KINDS[e.kind] || '');
+    if(hid) parts.push('masquée'); else if(off && e.kind !== 'base') parts.push('non suivie');
+    if(na) parts.push('pas dans ' + esc(fg.n));
+    const tag = parts.length ? `<div class="fk${na ? ' na' : ''}">${parts.join(' · ')}</div>` : '';
+    h += `<div class="frow ${hid || off ? 'hid' : ''}${na ? ' na' : ''}"><div class="ftop"><img crossorigin="anonymous" src="${sprUrl(e, sh)}" data-fb="${artUrl(e, sh)}" onerror="${FB}" alt=""><div class="fname">${esc(ename(e))}${tag}</div>` +
       (S.adminMode && e.kind !== 'base' ? `<button class="btn sm" data-a="ren" data-k="${esc(e.key)}">✎</button><button class="btn sm" data-a="hide" data-k="${esc(e.key)}">${hid ? 'Afficher' : 'Masquer'}</button>` : '') +
       `</div><div class="tg">${tbtn(e, p, 'c', '✓ Capturé')}${tbtn(e, p, 's', '✨ Shiny')}${tbtn(e, p, 'iv', 'IV 100%')}${tbtn(e, p, 'h', 'HOME')}` +
       `<select class="gsel" data-k="${esc(e.key)}"><option value="">Jeu de capture…</option>${S.games.map(g => `<option value="${g.id}" ${p.g === g.id ? 'selected' : ''}>${esc(g.a)} — ${esc(g.n)}</option>`).join('')}</select></div></div>`;
@@ -722,12 +832,19 @@ async function toggleHide(key){
   const val = S.ov.hidden[key] ? deleteField() : true;
   await setDoc(doc(db, 'config', 'overrides'), {hidden:{[key]:val}}, {merge:true}).catch(() => toast('Échec'));
 }
+// Depuis la fiche : ajoute l'espèce avec ses formes par défaut pour ce jeu, ou la retire entièrement
 async function toggleAvail(gid, sid){
+  const sp = S.bySid[sid]; if(!sp) return;
   const on = S.avail[gid] && S.avail[gid].has(sid);
-  if(!S.avail[gid]) S.avail[gid] = new Set();
-  on ? S.avail[gid].delete(sid) : S.avail[gid].add(sid);
+  let want = new Set();
+  if(!on){
+    const g = gameById(gid);
+    want = new Set(sp.f.filter(e => formDefault(g, e)).map(e => e.key));
+    if(!want.size) want.add(sp.f[0].key);
+  }
+  setSpeciesAvail(gid, sp, want);
   if(S.sheetSid) renderSheet();
-  await setDoc(doc(db, 'config', 'avail'), {[gid]: on ? arrayRemove(sid) : arrayUnion(sid)}, {merge:true}).catch(() => toast('Échec'));
+  await persistAvail(gid);
 }
 
 /* ---------- PokéAPI ---------- */
@@ -828,7 +945,8 @@ async function importAvail(g){
       ((d && d.pokemon_entries) || []).forEach(e => set.add(idFromUrl(e.pokemon_species.url)));
     }
   }
-  if(set.size) await setDoc(doc(db, 'config', 'avail'), {[g.id]:[...set].sort((a, b) => a - b)}, {merge:true});
+  // la nouvelle liste repart des formes par défaut (les exceptions par forme de ce jeu sont remises à zéro)
+  if(set.size) await setDoc(doc(db, 'config', 'avail'), {[g.id]:[...set].sort((a, b) => a - b), ['F_' + g.id]:deleteField()}, {merge:true});
   return {n:set.size, bad};
 }
 
@@ -868,7 +986,7 @@ $('#ovModal').addEventListener('click', ev => {
     gdel: async () => {
       const g = S.games[i]; if(!confirm(`Supprimer « ${g.n} » et sa liste de disponibilité ?`)) return;
       await saveGames(S.games.filter((_, k) => k !== i));
-      await setDoc(doc(db, 'config', 'avail'), {[g.id]:deleteField()}, {merge:true});
+      await setDoc(doc(db, 'config', 'avail'), {[g.id]:deleteField(), ['F_' + g.id]:deleteField()}, {merge:true});
     },
     gsave: saveGameForm,
     gdup: async () => {
@@ -878,8 +996,11 @@ $('#ovModal').addEventListener('click', ev => {
       const ng = {...g, id:'g' + Date.now().toString(36), n:n.trim(), a:a.trim()};
       const l = [...S.games]; l.splice(i + 1, 0, ng);
       await saveGames(l);
-      const src = S.avail[g.id];
-      if(src && src.size) await setDoc(doc(db, 'config', 'avail'), {[ng.id]:[...src].sort((x, y) => x - y)}, {merge:true});
+      const src = S.avail[g.id], sf = S.availF[g.id];
+      if(src && src.size) await setDoc(doc(db, 'config', 'avail'), {
+        [ng.id]:[...src].sort((x, y) => x - y),
+        ['F_' + ng.id]:{i:[...(sf ? sf.i : [])], x:[...(sf ? sf.x : [])]}
+      }, {merge:true});
       toast(`« ${ng.n} » créé${src && src.size ? ' avec ' + src.size + ' Pokémon dispo' : ''}`);
     },
     gimp: async () => {
