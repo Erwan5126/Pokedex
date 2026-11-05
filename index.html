@@ -111,14 +111,22 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 @keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
 .shead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .hero{display:flex;gap:14px;align-items:center;margin:10px 0 6px}
-.art{width:140px;height:140px;flex:none;border-radius:18px;background:radial-gradient(circle,#2a2f6e,transparent 70%);display:grid;place-items:center;position:relative;cursor:pointer}
+.art{width:140px;height:140px;flex:none;border-radius:18px;background:radial-gradient(circle,#2a2f6e,transparent 70%);display:grid;place-items:center;position:relative}
 .art img{width:130px;height:130px;object-fit:contain}
 .shtag{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;background:var(--card2);border:1px solid var(--line);border-radius:99px;padding:2px 8px;white-space:nowrap}
 .h1{font-size:22px;font-weight:800;line-height:1.15}
 .types{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
 .type{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.35)}
 .sec{font-size:11px;font-weight:800;color:var(--mute);text-transform:uppercase;letter-spacing:.8px;margin:18px 0 8px}
-.frow{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:8px}
+.frow{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.frow.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.hbtns{display:flex;gap:6px;margin-top:10px}
+.hb{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card);font-size:16px;font-weight:800;color:var(--mute);display:grid;place-items:center;padding:0;line-height:1}
+.hb.on.st{background:var(--gold);border-color:var(--gold);color:#3a2a00}
+.hb.on.sm{background:#4c8dff;border-color:#4c8dff;color:#fff}
+.hb.on.sf{background:#ff6fae;border-color:#ff6fae;color:#fff}
+.t.on.t-m{background:#4c8dff;border-color:#4c8dff;color:#fff}
+.t.on.t-f{background:#ff6fae;border-color:#ff6fae;color:#fff}
 .frow.hid{opacity:.5}
 .ftop{display:flex;align-items:center;gap:8px}
 .ftop img{width:48px;height:48px;object-fit:contain;image-rendering:pixelated;flex:none}
@@ -248,7 +256,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.7";
+const APP_V = "1.8";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -263,12 +271,12 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 const API = 'https://pokeapi.co/api/v2/';
 const SPR = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
 const GEN = {1:'Kanto',2:'Johto',3:'Hoenn',4:'Sinnoh',5:'Unys',6:'Kalos',7:'Alola',8:'Galar',9:'Paldea'};
-const KINDS = {base:'Base',fem:'Femelle',regional:'Régionale',mega:'Méga',gmax:'Gigamax',alt:'Alternative',cosm:'Cosmétique'};
+const KINDS = {base:'Base',regional:'Régionale',mega:'Méga',gmax:'Gigamax',alt:'Alternative',cosm:'Cosmétique'};
 const TYPES = ['normal','fighting','flying','poison','ground','rock','bug','ghost','steel','fire','water','grass','electric','psychic','ice','dragon','dark','fairy'];
 const TYPE_FR = ['Normal','Combat','Vol','Poison','Sol','Roche','Insecte','Spectre','Acier','Feu','Eau','Plante','Électrik','Psy','Glace','Dragon','Ténèbres','Fée'];
 const TYPE_C = ['#9fa19f','#ff8000','#81b9ef','#9141cb','#915121','#afa981','#91a119','#704170','#60a1b8','#e62829','#2980ef','#3fa129','#e0ad00','#ef4179','#3dcef3','#5060e1','#624d4e','#ef70ef'];
 const STATUS = [['all','Tous'],['miss','Manquants'],['c','Capturés'],['nos','Shiny manquants'],['s','Shiny'],['noiv','IV manquants'],['noh','Pas dans HOME']];
-const DEF_SET = {kinds:{fem:true,regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true};
+const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true};
 const SW = 'sword-shield,the-isle-of-armor,the-crown-tundra', SV = 'scarlet-violet,the-teal-mask,the-indigo-disk';
 const DEFAULT_GAMES = [
   {id:'rouge',n:'Rouge',a:'R',c:'#e3350d',gen:1,vg:'red-blue'},
@@ -346,7 +354,7 @@ const S = {
   games:[], avail:{}, availF:{}, ov:{hidden:{}, names:{}},
   prog:{}, settings:structuredClone(DEF_SET),
   view:{gen:0, q:'', status:'all', game:'', type:'', kind:''},
-  lastVisible:[], lastForms:[], avEdit:'', avKind:'', sheetSid:null, sheetShiny:false, editGame:null
+  lastVisible:[], lastForms:[], avEdit:'', avKind:'', sheetSid:null, sheetShiny:false, sheetForm:null, sheetFem:false, femDone:false, editGame:null
 };
 const ename = e => S.ov.names[e.key] || e.raw;
 const etypes = e => e.t || e.sp.f[0].t || [];
@@ -462,6 +470,7 @@ async function start(){
   onSnapshot(uref(), snap => {
     const d = snap.data() || {};
     S.prog = d.p || {};
+    if(!S.femDone && !snap.metadata.fromCache){ S.femDone = true; migrateFem(); }
     S.settings = {...DEF_SET, ...(d.settings || {}), kinds:{...DEF_SET.kinds, ...((d.settings || {}).kinds || {})}};
     if(!snap.metadata.hasPendingWrites) scheduleRender();
   });
@@ -498,9 +507,12 @@ async function loadCatalog(){
 function buildCatalog(docs){
   S.species = []; S.byKey = {}; S.bySid = {};
   for(const d of docs) for(const sp of (d.list || [])){
-    const s = {i:sp.i, n:sp.n, e:sp.e, g:sp.g, f:[]};
-    for(const f of sp.f){
-      if(S.byKey[f.k]) continue;
+    const s = {i:sp.i, n:sp.n, e:sp.e, g:sp.g, f:[], fem:null, femKey:null};
+    const fe = sp.f.find(f => f.d === 'fem');
+    if(fe){ s.fem = fe.s; s.femKey = fe.k; }
+    for(let f of sp.f){
+      if(f.d === 'fem' || S.byKey[f.k]) continue;
+      if(fe && f.d === 'base') f = {...f, n:String(f.n).replace(/\s*♂$/, '')};
       const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s};
       s.f.push(e); S.byKey[f.k] = e;
     }
@@ -696,7 +708,30 @@ function setFlag(key, field, val){
   const cur = {...(S.prog[key] || {})};
   if(val) cur[field] = val; else delete cur[field];
   if(val && field !== 'c') cur.c = 1;
-  if(field === 'c' && !val) for(const f of ['s','iv','h','g']) delete cur[f];
+  if(field === 'c' && !val) for(const f of ['s','iv','h','g','m','f']) delete cur[f];
+  if(Object.keys(cur).length) S.prog[key] = cur; else delete S.prog[key];
+  updateDoc(uref(), new FieldPath('p', key), S.prog[key] ? S.prog[key] : deleteField())
+    .catch(err => { console.error(err); toast('Erreur de sauvegarde'); });
+  refreshCard(key);
+}
+function migrateFem(){
+  const upd = {};
+  for(const sp of S.species){
+    if(!sp.femKey) continue;
+    const pf = S.prog[sp.femKey]; if(!pf) continue;
+    const bk = sp.f[0].key, cur = {...(S.prog[bk] || {})};
+    if(pf.c){ cur.c = 1; cur.f = 1; if(!cur.m && (S.prog[bk] || {}).c) cur.m = 1; }
+    for(const k of ['s','iv','h']) if(pf[k]) cur[k] = 1;
+    if(pf.g && !cur.g) cur.g = pf.g;
+    S.prog[bk] = cur; delete S.prog[sp.femKey];
+    upd['p.' + bk] = cur; upd['p.' + sp.femKey] = deleteField();
+  }
+  if(Object.keys(upd).length) updateDoc(uref(), upd).catch(e => console.error(e));
+}
+function setSex(key, sx){
+  const cur = {...(S.prog[key] || {})};
+  if(cur[sx]) delete cur[sx]; else { cur[sx] = 1; cur.c = 1; }
+  if(!cur.m && !cur.f && (sx === 'm' || sx === 'f') && !cur[sx]){ for(const k of ['c','s','iv','h','g']) delete cur[k]; }
   if(Object.keys(cur).length) S.prog[key] = cur; else delete S.prog[key];
   updateDoc(uref(), new FieldPath('p', key), S.prog[key] ? S.prog[key] : deleteField())
     .catch(err => { console.error(err); toast('Erreur de sauvegarde'); });
@@ -770,20 +805,26 @@ new ResizeObserver(() => document.documentElement.style.setProperty('--hh', $('#
 /* ---------- Fiche détail ---------- */
 function typeChips(ts){ return ts.map(i => `<span class="type" style="background:${TYPE_C[i]}">${TYPE_FR[i]}</span>`).join(''); }
 function navList(){ return S.lastVisible.map(sp => sp.i); }
-function openSheet(sid){ S.sheetSid = sid; renderSheet(); $('#ovSheet').classList.add('show'); $('#sheet').scrollTop = 0; document.body.style.overflow = 'hidden'; }
-function closeSheet(){ $('#ovSheet').classList.remove('show'); S.sheetSid = null; if(!$('#ovModal').classList.contains('show')) document.body.style.overflow = ''; renderGrid(); }
-function navSheet(d){ const l = navList(); const i = l.indexOf(S.sheetSid); const j = i + d; if(i < 0 || j < 0 || j >= l.length) return; S.sheetSid = l[j]; renderSheet(); $('#sheet').scrollTop = 0; }
+function openSheet(sid){ S.sheetSid = sid; S.sheetFem = false; S.sheetForm = null; if(S.view.kind){ const l = spEntries(S.bySid[sid]); if(l[0]) S.sheetForm = l[0].key; } renderSheet(); $('#ovSheet').classList.add('show'); $('#sheet').scrollTop = 0; document.body.style.overflow = 'hidden'; }
+function closeSheet(){ $('#ovSheet').classList.remove('show'); S.sheetSid = null; S.sheetForm = null; S.sheetFem = false; S.sheetShiny = false; if(!$('#ovModal').classList.contains('show')) document.body.style.overflow = ''; renderGrid(); }
+function navSheet(d){ const l = navList(); const i = l.indexOf(S.sheetSid); const j = i + d; if(i < 0 || j < 0 || j >= l.length) return; S.sheetSid = l[j]; S.sheetForm = null; S.sheetFem = false; renderSheet(); $('#sheet').scrollTop = 0; }
 function tbtn(e, p, f, label){ return `<button class="t t-${f} ${p[f] ? 'on' : ''}" data-a="tg" data-k="${esc(e.key)}" data-f="${f}">${label}</button>`; }
 function renderSheet(){
   const sp = S.bySid[S.sheetSid]; if(!sp) return closeSheet();
   const base = sp.f[0], sh = S.sheetShiny;
+  const sf = (S.byKey[S.sheetForm] && S.byKey[S.sheetForm].sp === sp) ? S.byKey[S.sheetForm] : base;
+  const femView = !!(sp.fem && S.sheetFem);
+  const look = e => (e === base && femView) ? {spr:sp.fem} : e;
+  const hero = look(sf);
   const forms = sp.f.filter(e => e.kind === 'base' || S.adminMode || isTracked(e) || (e.kind === S.view.kind && !S.ov.hidden[e.key]));
   const l = navList(), i = l.indexOf(sp.i);
   let h = `<div class="shead"><button class="ib" data-a="prev" ${i <= 0 ? 'disabled' : ''}>‹</button>` +
     `<div class="px" style="font-size:9px;color:var(--mute);text-align:center">#${pad(sp.i)} · GEN ${sp.g} ${esc((GEN[sp.g] || '').toUpperCase())}</div>` +
     `<div style="display:flex;gap:6px"><button class="ib" data-a="next" ${i < 0 || i >= l.length - 1 ? 'disabled' : ''}>›</button><button class="ib" data-a="close">✕</button></div></div>`;
-  h += `<div class="hero"><div class="art" data-a="shiny" title="Basculer normal / shiny"><img crossorigin="anonymous" src="${artUrl(base, sh)}" data-fb="${sprUrl(base, sh)}" onerror="${FB}" alt=""><span class="shtag">${sh ? '✨ Shiny' : 'Normal'} ⇄</span></div>` +
-    `<div style="min-width:0"><div class="h1">${esc(sp.n)}</div><div class="mute" style="font-weight:700;font-size:13px">${esc(cap(sp.e))}</div><div class="types">${typeChips(etypes(base))}</div></div></div>`;
+  const hb = `<button class="hb st ${sh ? 'on' : ''}" data-a="shiny" title="Afficher en shiny">${sh ? '★' : '☆'}</button>` +
+    (sp.fem && sf === base ? `<button class="hb sm ${!femView ? 'on' : ''}" data-a="sexv" data-v="0" title="Visuel mâle">♂</button><button class="hb sf ${femView ? 'on' : ''}" data-a="sexv" data-v="1" title="Visuel femelle">♀</button>` : '');
+  h += `<div class="hero"><div class="art"><img crossorigin="anonymous" src="${artUrl(hero, sh)}" data-fb="${sprUrl(hero, sh)}" onerror="${FB}" alt=""></div>` +
+    `<div style="min-width:0"><div class="h1">${esc(sf === base ? sp.n : ename(sf))}</div><div class="mute" style="font-weight:700;font-size:13px">${esc(cap(sf === base ? sp.e : sf.key))}${sf !== base ? ' · ' + (KINDS[sf.kind] || '') : ''}</div><div class="types">${typeChips(etypes(sf))}</div><div class="hbtns">${hb}</div></div></div>`;
   const fg = S.view.game ? gameById(S.view.game) : null;
   h += `<div class="sec">Ma collection${fg ? ` · <span style="color:${fg.c}">dispo dans ${esc(fg.n)}</span>` : ''}</div>`;
   for(const e of forms){
@@ -794,9 +835,10 @@ function renderSheet(){
     if(hid) parts.push('masquée'); else if(off && e.kind !== 'base') parts.push('non suivie');
     if(na) parts.push('pas dans ' + esc(fg.n));
     const tag = parts.length ? `<div class="fk${na ? ' na' : ''}">${parts.join(' · ')}</div>` : '';
-    h += `<div class="frow ${hid || off ? 'hid' : ''}${na ? ' na' : ''}"><div class="ftop"><img crossorigin="anonymous" src="${sprUrl(e, sh)}" data-fb="${artUrl(e, sh)}" onerror="${FB}" alt=""><div class="fname">${esc(ename(e))}${tag}</div>` +
+    const le = look(e), gendered = e === base && sp.fem;
+    h += `<div class="frow ${hid || off ? 'hid' : ''}${na ? ' na' : ''}${e === sf ? ' sel' : ''}" data-a="sel" data-k="${esc(e.key)}"><div class="ftop"><img crossorigin="anonymous" src="${sprUrl(le, sh)}" data-fb="${artUrl(le, sh)}" onerror="${FB}" alt=""><div class="fname">${esc(e === base ? sp.n : ename(e))}${gendered ? ' <span class="mute sm">♂ ♀</span>' : ''}${tag}</div>` +
       (S.adminMode && e.kind !== 'base' ? `<button class="btn sm" data-a="ren" data-k="${esc(e.key)}">✎</button><button class="btn sm" data-a="hide" data-k="${esc(e.key)}">${hid ? 'Afficher' : 'Masquer'}</button>` : '') +
-      `</div><div class="tg">${tbtn(e, p, 'c', '✓ Capturé')}${tbtn(e, p, 's', '✨ Shiny')}${tbtn(e, p, 'iv', 'IV 100%')}${tbtn(e, p, 'h', 'HOME')}` +
+      `</div><div class="tg">${gendered ? `<button class="t t-m ${p.m ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="m">✓ ♂</button><button class="t t-f ${p.f ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="f">✓ ♀</button>` : tbtn(e, p, 'c', '✓ Capturé')}${tbtn(e, p, 's', '✨ Shiny')}${tbtn(e, p, 'iv', 'IV 100%')}${tbtn(e, p, 'h', 'HOME')}` +
       `<select class="gsel" data-k="${esc(e.key)}"><option value="">Jeu de capture…</option>${S.games.map(g => `<option value="${g.id}" ${p.g === g.id ? 'selected' : ''}>${esc(g.a)} — ${esc(g.n)}</option>`).join('')}</select></div></div>`;
   }
   const chips = S.games.map(g => {
@@ -809,12 +851,16 @@ function renderSheet(){
 }
 $('#ovSheet').addEventListener('click', ev => {
   if(ev.target.id === 'ovSheet') return closeSheet();
+  if(ev.target.closest('select')) return;
   const b = ev.target.closest('[data-a]'); if(!b || b.disabled) return;
   const a = b.dataset.a;
   if(a === 'close') closeSheet();
   else if(a === 'prev') navSheet(-1);
   else if(a === 'next') navSheet(1);
   else if(a === 'shiny'){ S.sheetShiny = !S.sheetShiny; renderSheet(); }
+  else if(a === 'sexv'){ S.sheetFem = b.dataset.v === '1'; renderSheet(); }
+  else if(a === 'sel'){ if(S.sheetForm !== b.dataset.k){ S.sheetForm = b.dataset.k; renderSheet(); } }
+  else if(a === 'sx'){ setSex(b.dataset.k, b.dataset.f); if(b.dataset.f === 'f' && (S.prog[b.dataset.k] || {}).f) S.sheetFem = true; else if(b.dataset.f === 'm' && (S.prog[b.dataset.k] || {}).m) S.sheetFem = false; renderSheet(); }
   else if(a === 'tg'){ const p = S.prog[b.dataset.k] || {}; setFlag(b.dataset.k, b.dataset.f, p[b.dataset.f] ? 0 : 1); renderSheet(); }
   else if(a === 'ren') renameForm(b.dataset.k);
   else if(a === 'hide') toggleHide(b.dataset.k);
@@ -1127,7 +1173,7 @@ function renderSettings(){
   h += `<div class="sec">Compte</div><div class="grow"><div style="flex:1"><b>${esc(u.displayName || u.email || 'Invité')}</b><div class="mute sm">${type}${S.isAdmin ? ' · administrateur' : ''}</div></div><button class="btn sm dan" data-a="logout">Se déconnecter</button></div>`;
   h += `<div class="grow"><span class="mute sm" style="font-weight:700">UID</span><span class="code">${esc(u.uid)}</span><button class="btn sm" data-a="uid">Copier</button></div>`;
   h += `<div class="sec">Formes suivies</div><p class="mute sm" style="margin-top:0;font-weight:600">Les formes cochées apparaissent dans les fiches et comptent dans tes statistiques et dans le compteur de formes des cartes.</p>`;
-  for(const k of ['fem','regional','mega','gmax','alt','cosm']){
+  for(const k of ['regional','mega','gmax','alt','cosm']){
     const n = Object.values(S.byKey).filter(e => e.kind === k && !S.ov.hidden[e.key]).length;
     h += `<label class="chk"><input type="checkbox" data-kind="${k}" ${S.settings.kinds[k] ? 'checked' : ''}> ${KINDS[k]} <span class="mute sm" style="margin-left:auto">${n}</span></label>`;
   }
