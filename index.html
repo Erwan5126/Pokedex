@@ -219,6 +219,7 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
       <input class="search" id="q" type="search" placeholder="Nom (FR / EN) ou numéro…" autocomplete="off">
       <select id="fGame"></select>
       <select id="fType"></select>
+      <select id="fKind"></select>
     </div>
     <div class="chips" id="fStatus"></div>
     <div class="count" id="count"></div>
@@ -247,7 +248,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.6";
+const APP_V = "1.7";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -344,7 +345,7 @@ const S = {
   species:[], gens:[], byKey:{}, bySid:{},
   games:[], avail:{}, availF:{}, ov:{hidden:{}, names:{}},
   prog:{}, settings:structuredClone(DEF_SET),
-  view:{gen:0, q:'', status:'all', game:'', type:''},
+  view:{gen:0, q:'', status:'all', game:'', type:'', kind:''},
   lastVisible:[], lastForms:[], avEdit:'', avKind:'', sheetSid:null, sheetShiny:false, editGame:null
 };
 const ename = e => S.ov.names[e.key] || e.raw;
@@ -561,7 +562,13 @@ function buildStatic(){
   $('#fStatus').innerHTML = STATUS.map(([k, l]) => `<button class="chip" data-s="${k}">${l}</button>`).join('');
   $('#fType').innerHTML = '<option value="">Tous les types</option>' + TYPE_FR.map((t, i) => `<option value="${i}">${t}</option>`).join('');
 }
+const kindForms = (sp, k) => sp.f.filter(e => e.kind === k && !S.ov.hidden[e.key]);
 function renderFilters(){
+  const kc = {};
+  for(const sp of S.species){ const seen = new Set(); for(const e of sp.f) if(e.kind !== 'base' && !S.ov.hidden[e.key] && !seen.has(e.kind)){ seen.add(e.kind); kc[e.kind] = (kc[e.kind] || 0) + 1; } }
+  $('#fKind').innerHTML = '<option value="">Toutes les formes</option>' +
+    Object.keys(KINDS).filter(k => k !== 'base' && kc[k]).map(k => `<option value="${k}" ${S.view.kind === k ? 'selected' : ''}>Forme ${KINDS[k]} (${kc[k]})</option>`).join('');
+  if(S.view.kind && !kc[S.view.kind]) S.view.kind = '';
   document.querySelectorAll('#fStatus .chip').forEach(b => b.classList.toggle('on', b.dataset.s === S.view.status));
   const cur = S.view.game;
   $('#fGame').innerHTML = '<option value="">Tous les jeux</option>' +
@@ -574,8 +581,13 @@ function renderFilters(){
 }
 // Formes suivies ; avec un filtre jeu actif, seulement celles dispo dans ce jeu (compteurs et filtres de statut)
 function spEntries(sp){
-  const l = sp.f.filter(isTracked), gid = S.view.game;
-  if(!gid || (S.adminMode && S.avEdit)) return l;
+  const gid = S.view.game, k = S.view.kind, edit = S.adminMode && S.avEdit;
+  if(k && !edit){
+    const l = kindForms(sp, k);
+    return gid ? l.filter(e => formAvail(gid, e)) : l;
+  }
+  const l = sp.f.filter(isTracked);
+  if(!gid || edit) return l;
   const a = l.filter(e => formAvail(gid, e));
   return a.length ? a : l;
 }
@@ -604,6 +616,7 @@ function visibleSpecies(){
     if(av && !av.has(sp.i)) continue;
     if(qn !== null && sp.i !== qn) continue;
     const l = spEntries(sp);
+    if(S.view.kind && (S.adminMode && S.avEdit ? !kindForms(sp, S.view.kind).length : !l.length)) continue;
     if(q && qn === null && !sp.e.includes(q) && !l.some(e => norm(ename(e)).includes(q))) continue;
     if(ty !== null && !l.some(e => etypes(e).includes(ty))) continue;
     if(!statusOk(sp)) continue;
@@ -612,7 +625,7 @@ function visibleSpecies(){
   return out;
 }
 function cardHtml(sp){
-  const base = sp.f[0], l = spEntries(sp);
+  const l = spEntries(sp), base = S.view.kind && l[0] ? l[0] : sp.f[0];
   const pb = S.prog[base.key] || {};
   let c = 0, s = 0, iv = 0, hm = 0;
   for(const e of l){ const p = S.prog[e.key] || {}; if(p.c) c++; if(p.s) s++; if(p.iv) iv++; if(p.h) hm++; }
@@ -621,7 +634,8 @@ function cardHtml(sp){
     (l.length > 1 ? `<span class="fp" title="Formes capturées">${c}/${l.length}</span>` : '') +
     `<button class="qc" aria-label="Capturé">✓</button>` +
     `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(base, false)}" data-fb="${artUrl(base, false)}" onerror="${FB}" alt="">` +
-    `<div class="num">#${pad(sp.i)}</div><div class="nm">${esc(sp.n)}</div>` +
+    `<div class="num">#${pad(sp.i)}</div><div class="nm">${esc(S.view.kind && l.length === 1 ? ename(l[0]) : sp.n)}</div>` +
+    (S.view.kind ? `<div class="fk">${KINDS[S.view.kind]}${l.length > 1 ? ' ×' + l.length : ''}</div>` : '') +
     `<div class="bd">${s ? `<span class="s">✨${s > 1 ? s : ''}</span>` : ''}${iv ? '<span class="iv">IV</span>' : ''}${hm ? '<span class="h">H</span>' : ''}${g ? `<span>${esc(g.a)}</span>` : ''}</div></div>`;
 }
 function formCardHtml(e, gid){
@@ -651,7 +665,7 @@ function renderGrid(){
     // Édition de la dispo : une carte par forme
     const forms = [];
     for(const sp of list) for(const e of sp.f){
-      if(S.ov.hidden[e.key] || (S.avKind && e.kind !== S.avKind)) continue;
+      if(S.ov.hidden[e.key] || (S.avKind && e.kind !== S.avKind) || (S.view.kind && e.kind !== S.view.kind)) continue;
       forms.push(e);
     }
     S.lastForms = forms; n = forms.length;
@@ -660,7 +674,10 @@ function renderGrid(){
   } else {
     S.lastForms = []; n = list.length;
     const vs = new Set(list.map(sp => sp.i)), st = spTally(sp => vs.has(sp.i));
-    $('#count').textContent = `${list.length} Pokémon · ${st.any} capturé${st.any > 1 ? 's' : ''} · ★ ${st.all} complet${st.all > 1 ? 's' : ''}`;
+    if(S.view.kind){
+      let nf = 0, cf = 0; for(const sp of list) for(const e of spEntries(sp)){ nf++; if((S.prog[e.key] || {}).c) cf++; }
+      $('#count').textContent = `${list.length} Pokémon avec une forme ${KINDS[S.view.kind]} · ${cf}/${nf} forme${nf > 1 ? 's' : ''} capturée${cf > 1 ? 's' : ''}`;
+    } else $('#count').textContent = `${list.length} Pokémon · ${st.any} capturé${st.any > 1 ? 's' : ''} · ★ ${st.all} complet${st.all > 1 ? 's' : ''}`;
     $('#grid').innerHTML = list.map(cardHtml).join('');
   }
   renderAvBar(ag);
@@ -693,6 +710,7 @@ $('#fStatus').addEventListener('click', ev => { const b = ev.target.closest('.ch
 let qT; $('#q').addEventListener('input', ev => { clearTimeout(qT); qT = setTimeout(() => { S.view.q = ev.target.value; renderGrid(); }, 150); });
 $('#fGame').addEventListener('change', ev => { S.view.game = ev.target.value; renderGrid(); });
 $('#fType').addEventListener('change', ev => { S.view.type = ev.target.value; renderGrid(); });
+$('#fKind').addEventListener('change', ev => { S.view.kind = ev.target.value; renderGrid(); });
 $('#grid').addEventListener('click', ev => {
   const card = ev.target.closest('.card'); if(!card) return;
   if(S.adminMode && S.avEdit){
@@ -706,7 +724,9 @@ $('#grid').addEventListener('click', ev => {
   }
   const sp = S.bySid[+card.dataset.s]; if(!sp) return;
   if(ev.target.closest('.qc')){
-    const base = sp.f[0], p = S.prog[base.key] || {};
+    const kl = S.view.kind ? spEntries(sp) : null;
+    if(kl && kl.length !== 1) return openSheet(sp.i);
+    const base = kl ? kl[0] : sp.f[0], p = S.prog[base.key] || {};
     if(p.c && (p.s || p.iv || p.h || p.g) && !confirm(`Retirer ${ename(base)} de ta collection ? Shiny, IV, HOME et jeu seront effacés.`)) return;
     setFlag(base.key, 'c', p.c ? 0 : 1);
     return;
@@ -757,7 +777,7 @@ function tbtn(e, p, f, label){ return `<button class="t t-${f} ${p[f] ? 'on' : '
 function renderSheet(){
   const sp = S.bySid[S.sheetSid]; if(!sp) return closeSheet();
   const base = sp.f[0], sh = S.sheetShiny;
-  const forms = sp.f.filter(e => e.kind === 'base' || S.adminMode || isTracked(e));
+  const forms = sp.f.filter(e => e.kind === 'base' || S.adminMode || isTracked(e) || (e.kind === S.view.kind && !S.ov.hidden[e.key]));
   const l = navList(), i = l.indexOf(sp.i);
   let h = `<div class="shead"><button class="ib" data-a="prev" ${i <= 0 ? 'disabled' : ''}>‹</button>` +
     `<div class="px" style="font-size:9px;color:var(--mute);text-align:center">#${pad(sp.i)} · GEN ${sp.g} ${esc((GEN[sp.g] || '').toUpperCase())}</div>` +
