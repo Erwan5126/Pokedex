@@ -256,7 +256,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.9";
+const APP_V = "1.10";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -389,6 +389,8 @@ function formAvail(gid, e){
   if(o){ if(o.i.has(e.key)) return true; if(o.x.has(e.key)) return false; }
   return formDefault(gameById(gid), e);
 }
+// Un Pokémon est dans un jeu si au moins une de ses formes NON masquées y est dispo
+function inGame(gid, sp){ const av = S.avail[gid]; return !!(av && av.has(sp.i) && sp.f.some(e => !S.ov.hidden[e.key] && formAvail(gid, e))); }
 function setSpeciesAvail(gid, sp, want){
   const g = gameById(gid);
   if(!S.avail[gid]) S.avail[gid] = new Set();
@@ -637,7 +639,7 @@ function visibleSpecies(){
   const out = [];
   for(const sp of S.species){
     if(S.view.gen && sp.g !== S.view.gen) continue;
-    if(av && !av.has(sp.i)) continue;
+    if(av && !inGame(S.view.game, sp)) continue;
     if(qn !== null && sp.i !== qn) continue;
     const l = spEntries(sp);
     if(S.view.kind && (S.adminMode && S.avEdit ? !kindForms(sp, S.view.kind).length : !l.length)) continue;
@@ -854,7 +856,7 @@ function renderSheet(){
       `<select class="gsel" data-k="${esc(e.key)}"><option value="">Jeu de capture…</option>${S.games.map(g => `<option value="${g.id}" ${p.g === g.id ? 'selected' : ''}>${esc(g.a)} — ${esc(g.n)}</option>`).join('')}</select></div></div>`;
   }
   const chips = S.games.map(g => {
-    const on = S.avail[g.id] && S.avail[g.id].has(sp.i);
+    const on = inGame(g.id, sp);
     if(!on && !S.adminMode) return '';
     return `<button class="gchip ${on ? 'on' : ''}" style="--gc:${g.c}" ${S.adminMode ? `data-a="av" data-g="${g.id}"` : 'disabled'} title="${esc(g.n)}">${esc(g.a)}</button>`;
   }).join('');
@@ -1163,9 +1165,9 @@ function renderStats(){
   if(gl.length){
     h += `<div class="sec">Par jeu (espèces disponibles capturées)</div>`;
     for(const g of gl){
-      const av = S.avail[g.id]; let c = 0;
-      av.forEach(sid => { const sp = S.bySid[sid]; if(sp && (S.prog[sp.f[0].key] || {}).c) c++; });
-      h += srow(esc(g.a), c, av.size, g.c);
+      let c = 0, n = 0;
+      S.avail[g.id].forEach(sid => { const sp = S.bySid[sid]; if(!sp || !inGame(g.id, sp)) return; n++; if(sp.f.some(e => (S.prog[e.key] || {}).c)) c++; });
+      h += srow(esc(g.a), c, n, g.c);
     }
   }
   const byGame = {}; for(const k in S.prog){ const g = S.prog[k].g; if(g) byGame[g] = (byGame[g] || 0) + 1; }
