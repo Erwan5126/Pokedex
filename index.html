@@ -243,7 +243,7 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
     <div class="tools">
       <input class="search" id="q" type="search" placeholder="Nom (FR / EN) ou numéro…" autocomplete="off">
       <select id="fGame"></select>
-      <button class="chip" id="fExcl" hidden title="Formes dispo dans ce jeu mais pas dans sa version jumelle">Exclusifs</button>
+      <span class="chips" id="fExcl" hidden></span>
       <select id="fType"></select>
       <select id="fKind"></select>
       <select id="fSort" title="Ordre d'affichage">
@@ -285,7 +285,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.20";
+const APP_V = "1.21";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -382,7 +382,7 @@ const S = {
   species:[], gens:[], byKey:{}, bySid:{},
   games:[], avail:{}, availF:{}, ov:{hidden:{}, names:{}},
   prog:{}, settings:structuredClone(DEF_SET),
-  view:{gen:0, q:'', status:'all', game:'', type:'', kind:'', excl:false, sort:(() => { try { return localStorage.getItem('pdx-sort') || 'num'; } catch(e){ return 'num'; } })()},
+  view:{gen:0, q:'', status:'all', game:'', type:'', kind:'', xoff:new Set(), sort:(() => { try { return localStorage.getItem('pdx-sort') || 'num'; } catch(e){ return 'num'; } })()},
   lastVisible:[], lastForms:[], avEdit:'', avKind:'', sheetSid:null, sheetShiny:false, sheetForm:null, sheetFem:false, femDone:false, editGame:null
 };
 const ename = e => S.ov.names[e.key] || e.raw;
@@ -427,7 +427,18 @@ function partners(gid){
 }
 const formExcl = (gid, e, ps) => formAvail(gid, e) && !ps.some(p => formAvail(p, e));
 function spExcl(gid, sp, ps = partners(gid)){ return ps.length > 0 && sp.f.some(e => !S.ov.hidden[e.key] && formExcl(gid, e, ps)); }
-function exclOnly(gid, l){ if(!S.view.excl) return l; const ps = partners(gid); const x = l.filter(e => !ps.some(p => formAvail(p, e))); return x.length ? x : l; }
+function viewGames(){
+  const k = S.view.game; if(!k) return [];
+  if(k.startsWith('vg:')) return S.games.filter(g => g.vg === k.slice(3) && S.avail[g.id] && S.avail[g.id].size).map(g => g.id);
+  return gameById(k) ? [k] : [];
+}
+const viewLabel = () => viewGames().map(id => gameById(id).n).join(' / ');
+// Forme visible avec le filtre jeu : dispo dans une des versions ; si elle n'est que dans une seule, il faut que ses exclus soient inclus
+function viewForm(e){
+  const a = viewGames().filter(id => formAvail(id, e));
+  return a.length > 1 || (a.length === 1 && !S.view.xoff.has(a[0]));
+}
+const viewSp = sp => sp.f.some(e => !S.ov.hidden[e.key] && viewForm(e));
 function inGame(gid, sp){ const av = S.avail[gid]; return !!(av && av.has(sp.i) && sp.f.some(e => !S.ov.hidden[e.key] && formAvail(gid, e))); }
 function setSpeciesAvail(gid, sp, want){
   const g = gameById(gid);
@@ -643,17 +654,25 @@ function renderFilters(){
   if(S.view.kind && !kc[S.view.kind]) S.view.kind = '';
   document.querySelectorAll('#fStatus .chip').forEach(b => b.classList.toggle('on', b.dataset.s === S.view.status));
   const cur = S.view.game;
-  $('#fGame').innerHTML = '<option value="">Tous les jeux</option>' +
-    S.games.filter(g => S.avail[g.id] && S.avail[g.id].size).map(g => `<option value="${g.id}" ${g.id === cur ? 'selected' : ''}>Dispo : ${esc(g.n)}</option>`).join('');
+  const opts = [], seen = new Set();
+  for(const g of S.games){
+    if(!S.avail[g.id] || !S.avail[g.id].size) continue;
+    const key = partners(g.id).length ? 'vg:' + g.vg : g.id;
+    if(seen.has(key)) continue; seen.add(key);
+    const names = key.startsWith('vg:') ? S.games.filter(x => x.vg === g.vg && S.avail[x.id] && S.avail[x.id].size).map(x => x.n).join(' / ') : g.n;
+    opts.push(`<option value="${esc(key)}" ${key === cur ? 'selected' : ''}>Dispo : ${esc(names)}</option>`);
+  }
+  $('#fGame').innerHTML = '<option value="">Tous les jeux</option>' + opts.join('');
   if(cur && !$('#fGame').value) S.view.game = '';
-  const ps = S.view.game ? partners(S.view.game) : [], xb = $('#fExcl');
-  if(!ps.length){ S.view.excl = false; xb.hidden = true; }
+  const vgs = viewGames(), xb = $('#fExcl');
+  if(vgs.length < 2){ xb.hidden = true; xb.innerHTML = ''; }
   else {
-    const g = gameById(S.view.game);
-    const n = S.species.filter(sp => (!S.view.gen || sp.g === S.view.gen) && spExcl(g.id, sp, ps)).length;
-    xb.hidden = false; xb.classList.toggle('on', S.view.excl);
-    xb.textContent = `Exclusifs ${g.a} (${n})`;
-    xb.title = `Dispo dans ${g.n} mais pas dans ${ps.map(id => gameById(id).n).join(' / ')}`;
+    xb.hidden = false;
+    xb.innerHTML = vgs.map(id => {
+      const g = gameById(id), n = S.species.filter(sp => (!S.view.gen || sp.g === S.view.gen) && spExcl(id, sp)).length;
+      const on = !S.view.xoff.has(id);
+      return `<button class="chip ${on ? 'on' : ''}" data-xv="${id}" title="${on ? 'Inclus' : 'Exclus'} : ce qu'on ne trouve que dans ${esc(g.n)}">${on ? '✓' : '✕'} Exclus ${esc(g.n)} (${n})</button>`;
+    }).join('');
   }
   if(S.isAdmin){
     if(S.avEdit && !gameById(S.avEdit)) S.avEdit = '';
@@ -665,11 +684,11 @@ function spEntries(sp){
   const gid = S.view.game, k = S.view.kind, edit = S.adminMode && S.avEdit;
   if(k && !edit){
     const l = kindForms(sp, k);
-    return gid ? exclOnly(gid, l.filter(e => formAvail(gid, e))) : l;
+    return gid ? l.filter(viewForm) : l;
   }
   const l = sp.f.filter(isTracked);
   if(!gid || edit) return l;
-  const a = exclOnly(gid, l.filter(e => formAvail(gid, e)));
+  const a = l.filter(viewForm);
   return a.length ? a : l;
 }
 function statusOk(sp){
@@ -690,14 +709,12 @@ function statusOk(sp){
 function visibleSpecies(){
   const q = norm(S.view.q.trim());
   const qn = /^#?\d+$/.test(q) ? +q.replace('#', '') : null;
-  const av = S.view.game ? S.avail[S.view.game] : null;
+  const av = !!S.view.game;
   const ty = S.view.type === '' ? null : +S.view.type;
-  const exPs = S.view.game && S.view.excl ? partners(S.view.game) : [];
   const out = [];
   for(const sp of S.species){
     if(S.view.gen && sp.g !== S.view.gen) continue;
-    if(av && !inGame(S.view.game, sp)) continue;
-    if(av && S.view.excl && !spExcl(S.view.game, sp, exPs)) continue;
+    if(av && !viewSp(sp)) continue;
     if(qn !== null && sp.i !== qn) continue;
     const l = spEntries(sp);
     if(S.view.kind && (S.adminMode && S.avEdit ? !kindForms(sp, S.view.kind).length : !l.length)) continue;
@@ -918,8 +935,12 @@ function saveSettings(){ updateDoc(uref(), {settings:S.settings}).catch(() => to
 $('#gens').addEventListener('click', ev => { const b = ev.target.closest('.gen'); if(!b) return; S.view.gen = +b.dataset.g; renderGens(); renderGrid(); window.scrollTo({top:0}); });
 $('#fStatus').addEventListener('click', ev => { const b = ev.target.closest('.chip'); if(!b) return; S.view.status = b.dataset.s; renderFilters(); renderGrid(); });
 let qT; $('#q').addEventListener('input', ev => { clearTimeout(qT); qT = setTimeout(() => { S.view.q = ev.target.value; renderGrid(); }, 150); });
-$('#fGame').addEventListener('change', ev => { S.view.game = ev.target.value; S.view.excl = false; renderFilters(); renderGrid(); });
-$('#fExcl').addEventListener('click', () => { S.view.excl = !S.view.excl; renderFilters(); renderGrid(); });
+$('#fGame').addEventListener('change', ev => { S.view.game = ev.target.value; S.view.xoff = new Set(); renderFilters(); renderGrid(); });
+$('#fExcl').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-xv]'); if(!b) return;
+  const id = b.dataset.xv; S.view.xoff.has(id) ? S.view.xoff.delete(id) : S.view.xoff.add(id);
+  renderFilters(); renderGrid();
+});
 $('#fType').addEventListener('change', ev => { S.view.type = ev.target.value; renderGrid(); });
 $('#fSort').value = S.view.sort;
 $('#fSort').addEventListener('change', ev => { S.view.sort = ev.target.value; try { localStorage.setItem('pdx-sort', S.view.sort); } catch(e){} renderGrid(); window.scrollTo({top:0}); });
@@ -1003,11 +1024,11 @@ function renderSheet(){
     (sf.fem ? `<button class="hb sm ${!femView ? 'on' : ''}" data-a="sexv" data-v="0" title="Visuel mâle">♂</button><button class="hb sf ${femView ? 'on' : ''}" data-a="sexv" data-v="1" title="Visuel femelle">♀</button>` : '');
   h += `<div class="hero"><div class="art"><img crossorigin="anonymous" src="${artUrl(hero, sh)}" data-fb="${sprUrl(hero, sh)}" onerror="${FB}" alt=""></div>` +
     `<div style="min-width:0"><div class="h1">${esc(bname(sf))}</div><div class="mute" style="font-weight:700;font-size:13px">${esc(cap(sf === base ? sp.e : sf.key))}${sf !== base ? ' · ' + (KINDS[sf.kind] || '') : ''}</div><div class="types">${typeChips(etypes(sf))}</div><div class="hbtns">${hb}</div></div></div>`;
-  const fg = S.view.game ? gameById(S.view.game) : null;
+  const vg = viewGames(), fg = vg.length ? {n:viewLabel(), c:gameById(vg[0]).c} : null;
   h += `<div class="sec">Ma collection${fg ? ` · <span style="color:${fg.c}">dispo dans ${esc(fg.n)}</span>` : ''}</div>`;
   for(const e of forms){
     const p = S.prog[e.key] || {};
-    const hid = !!S.ov.hidden[e.key], off = !isTracked(e), na = fg && !formAvail(fg.id, e);
+    const hid = !!S.ov.hidden[e.key], off = !isTracked(e), na = fg && !viewForm(e);
     const parts = [];
     if(e.kind !== 'base') parts.push(KINDS[e.kind] || '');
     if(hid) parts.push('masquée'); else if(off && e.kind !== 'base') parts.push('non suivie');
