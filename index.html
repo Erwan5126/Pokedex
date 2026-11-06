@@ -266,7 +266,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.13";
+const APP_V = "1.14";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -641,7 +641,7 @@ function statusOk(sp){
   const any = f => l.some(e => (S.prog[e.key] || {})[f]);
   switch(S.view.status){
     case 'miss': return spUnits(l).c === 0;
-    case 'part': { const u = spUnits(l); return u.c > 0 && u.c < u.n; }
+    case 'part': { const u = spUnits(l); return u.c < u.n; } // manquants + incomplets
     case 'full': { const u = spUnits(l); return u.n > 0 && u.c === u.n; }
     case 'c': return any('c');
     case 'nos': return some('s');
