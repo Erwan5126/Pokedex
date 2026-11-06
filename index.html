@@ -194,7 +194,7 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 <div id="login" class="screen" hidden>
   <div class="lcard">
     <div class="logo px" style="justify-content:center;font-size:15px"><span class="ball"></span>POKÉDEX</div>
-    <p class="lsub">Captures, shiny, IV parfaits, formes et living dex HOME — synchronisés sur tous tes appareils.</p>
+    <p class="lsub">Captures, shiny, IV parfaits et toutes les formes — synchronisés sur tous tes appareils.</p>
     <button class="btn pri wide" id="lGoogle">Continuer avec Google</button>
     <div class="or">ou</div>
     <input class="inp wide" id="lMail" type="email" placeholder="E-mail" autocomplete="email">
@@ -266,7 +266,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.12";
+const APP_V = "1.13";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -285,7 +285,7 @@ const KINDS = {base:'Base',regional:'Régionale',mega:'Méga',gmax:'Gigamax',alt
 const TYPES = ['normal','fighting','flying','poison','ground','rock','bug','ghost','steel','fire','water','grass','electric','psychic','ice','dragon','dark','fairy'];
 const TYPE_FR = ['Normal','Combat','Vol','Poison','Sol','Roche','Insecte','Spectre','Acier','Feu','Eau','Plante','Électrik','Psy','Glace','Dragon','Ténèbres','Fée'];
 const TYPE_C = ['#9fa19f','#ff8000','#81b9ef','#9141cb','#915121','#afa981','#91a119','#704170','#60a1b8','#e62829','#2980ef','#3fa129','#e0ad00','#ef4179','#3dcef3','#5060e1','#624d4e','#ef70ef'];
-const STATUS = [['all','Tous'],['miss','Manquants'],['c','Capturés'],['nos','Shiny manquants'],['s','Shiny'],['noiv','IV manquants'],['noh','Pas dans HOME']];
+const STATUS = [['all','Tous'],['miss','Manquants'],['part','Incomplets'],['c','Capturés'],['full','Complets ★'],['nos','Shiny manquants'],['s','Shiny'],['noiv','IV manquants']];
 const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true};
 const SW = 'sword-shield,the-isle-of-armor,the-crown-tundra', SV = 'scarlet-violet,the-teal-mask,the-indigo-disk';
 const DEFAULT_GAMES = [
@@ -590,7 +590,7 @@ function renderPills(){
   $('#pills').innerHTML =
     `<span class="pill"><span class="lb">Capturés </span><b>${st.any}</b>/${st.n} · ${pct(st.any, st.n)}%</span>` +
     `<span class="pill full"><span class="lb">Complets </span>★ <b>${st.all}</b></span>` +
-    `<span class="pill s">✨ <b>${t.s}</b></span><span class="pill iv">IV <b>${t.iv}</b></span><span class="pill h">HOME <b>${t.h}</b></span>`;
+    `<span class="pill s">✨ <b>${t.s}</b></span><span class="pill iv">IV <b>${t.iv}</b></span>`;
 }
 function genBtn(g, label, t){
   return `<button class="gen ${S.view.gen === g ? 'on' : ''}" data-g="${g}"><div class="gl">${label}</div><small>${t.any}/${t.n} · <b>★ ${t.all}</b></small>` +
@@ -640,12 +640,13 @@ function statusOk(sp){
   const some = f => l.some(e => !(S.prog[e.key] || {})[f]);
   const any = f => l.some(e => (S.prog[e.key] || {})[f]);
   switch(S.view.status){
-    case 'miss': { const u = spUnits(l); return u.c < u.n; }
+    case 'miss': return spUnits(l).c === 0;
+    case 'part': { const u = spUnits(l); return u.c > 0 && u.c < u.n; }
+    case 'full': { const u = spUnits(l); return u.n > 0 && u.c === u.n; }
     case 'c': return any('c');
     case 'nos': return some('s');
     case 's': return any('s');
     case 'noiv': return some('iv');
-    case 'noh': return some('h');
     default: return true;
   }
 }
@@ -680,7 +681,7 @@ function cardHtml(sp){
     `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(base, false)}" data-fb="${artUrl(base, false)}" onerror="${FB}" alt="">` +
     `<div class="num">#${pad(sp.i)}</div><div class="nm">${esc(S.view.kind && l.length === 1 ? ename(l[0]) : sp.n)}</div>` +
     (S.view.kind ? `<div class="fk">${KINDS[S.view.kind]}${l.length > 1 ? ' ×' + l.length : ''}</div>` : '') +
-    `<div class="bd">${s ? `<span class="s">✨${s > 1 ? s : ''}</span>` : ''}${iv ? '<span class="iv">IV</span>' : ''}${hm ? '<span class="h">H</span>' : ''}${g ? `<span>${esc(g.a)}</span>` : ''}</div></div>`;
+    `<div class="bd">${s ? `<span class="s">✨${s > 1 ? s : ''}</span>` : ''}${iv ? '<span class="iv">IV</span>' : ''}${g ? `<span>${esc(g.a)}</span>` : ''}</div></div>`;
 }
 function formCardHtml(e, gid){
   return `<div class="card${formAvail(gid, e) ? ' avon' : ''}" data-k="${esc(e.key)}">` +
@@ -772,7 +773,7 @@ function setSex(key, sx){
 async function bulkCapture(mode){
   const list = S.lastVisible; if(!list.length) return;
   const label = {base:'Cocher la forme affichée des', all:'Cocher toutes les formes suivies des', none:'Tout décocher pour les'}[mode];
-  if(!confirm(`${label} ${list.length} Pokémon affichés ?` + (mode === 'none' ? '\nShiny, IV, HOME et jeu de capture seront aussi effacés.' : '\nTu pourras ensuite décocher ceux qui te manquent.'))) return;
+  if(!confirm(`${label} ${list.length} Pokémon affichés ?` + (mode === 'none' ? '\nShiny, IV et jeu de capture seront aussi effacés.' : '\nTu pourras ensuite décocher ceux qui te manquent.'))) return;
   const ups = [];
   for(const sp of list){
     let targets;
@@ -824,7 +825,7 @@ $('#grid').addEventListener('click', ev => {
     const kl = S.view.kind ? spEntries(sp) : null;
     if(kl && kl.length !== 1) return openSheet(sp.i);
     const base = kl ? kl[0] : sp.f[0], p = S.prog[base.key] || {};
-    if(p.c && (p.s || p.iv || p.h || p.g) && !confirm(`Retirer ${ename(base)} de ta collection ? Shiny, IV, HOME et jeu seront effacés.`)) return;
+    if(p.c && (p.s || p.iv || p.h || p.g) && !confirm(`Retirer ${ename(base)} de ta collection ? Shiny, IV et jeu seront effacés.`)) return;
     setFlag(base.key, 'c', p.c ? 0 : 1);
     return;
   }
@@ -900,7 +901,7 @@ function renderSheet(){
     const le = look(e), gendered = !!e.fem;
     h += `<div class="frow ${hid || off ? 'hid' : ''}${na ? ' na' : ''}${e === sf ? ' sel' : ''}" data-a="sel" data-k="${esc(e.key)}"><div class="ftop"><img crossorigin="anonymous" src="${sprUrl(le, sh)}" data-fb="${artUrl(le, sh)}" onerror="${FB}" alt=""><div class="fname">${esc(e === base ? sp.n : ename(e))}${gendered ? ' <span class="mute sm">♂ ♀</span>' : ''}${tag}</div>` +
       (S.adminMode && e.kind !== 'base' ? `<button class="btn sm" data-a="ren" data-k="${esc(e.key)}">✎</button><button class="btn sm" data-a="hide" data-k="${esc(e.key)}">${hid ? 'Afficher' : 'Masquer'}</button>` : '') +
-      `</div><div class="tg">${gendered ? `<button class="t t-m ${p.m ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="m">✓ ♂</button><button class="t t-f ${p.f ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="f">✓ ♀</button>` : tbtn(e, p, 'c', '✓ Capturé')}${tbtn(e, p, 's', '✨ Shiny')}${tbtn(e, p, 'iv', 'IV 100%')}${tbtn(e, p, 'h', 'HOME')}` +
+      `</div><div class="tg">${gendered ? `<button class="t t-m ${p.m ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="m">✓ ♂</button><button class="t t-f ${p.f ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="f">✓ ♀</button>` : tbtn(e, p, 'c', '✓ Capturé')}${tbtn(e, p, 's', '✨ Shiny')}${tbtn(e, p, 'iv', 'IV 100%')}` +
       `<select class="gsel" data-k="${esc(e.key)}"><option value="">Jeu de capture…</option>${S.games.map(g => `<option value="${g.id}" ${p.g === g.id ? 'selected' : ''}>${esc(g.a)} — ${esc(g.n)}</option>`).join('')}</select></div></div>`;
   }
   const chips = S.games.map(g => {
@@ -1202,13 +1203,13 @@ function openStats(){ openModal(renderStats); }
 function renderStats(){
   const all = tracked(), t = tally(all), st = spTally();
   let h = mhead('Statistiques');
-  h += `<div class="big4" style="margin-top:12px"><div><b>${pct(st.any, st.n)}%</b><small>${st.any}/${st.n} Pokémon</small></div><div><b style="color:var(--gold)">${st.all}</b><small>complets ★</small></div><div><b style="color:var(--gold)">${t.s}</b><small>shiny</small></div><div><b style="color:var(--home)">${pct(t.h, t.n)}%</b><small>living dex HOME</small></div></div>`;
+  h += `<div class="big4" style="margin-top:12px"><div><b>${pct(st.any, st.n)}%</b><small>${st.any}/${st.n} Pokémon</small></div><div><b style="color:var(--gold)">${st.all}</b><small>complets ★</small></div><div><b style="color:var(--gold)">${t.s}</b><small>shiny</small></div><div><b style="color:var(--cyan)">${t.iv}</b><small>IV parfaits</small></div></div>`;
   h += `<div class="sec">Par génération · <span style="color:var(--green)">au moins une forme</span> / <span style="color:var(--gold)">toutes les formes</span></div>`;
   for(const g of S.gens){ const x = spTally(sp => sp.g === g); h += srow(`Gen ${g} · ${GEN[g] || ''}`, x.any, x.n) + srow('', x.all, x.n, 'var(--gold)'); }
   h += `<div class="sec">Formes capturées (toutes formes suivies)</div>` + srow('Total', t.c, t.n, 'var(--accent)');
   h += `<div class="sec">Par type de forme</div>`;
   for(const k of Object.keys(KINDS)){ const l = all.filter(e => e.kind === k); if(l.length){ const x = tally(l); h += srow(KINDS[k], x.c, x.n, 'var(--accent)'); } }
-  h += `<div class="sec">Shiny & HOME</div>` + srow('✨ Shiny', t.s, t.n, 'var(--gold)') + srow('IV 100%', t.iv, t.n, 'var(--cyan)') + srow('HOME', t.h, t.n, 'var(--home)');
+  h += `<div class="sec">Shiny & IV</div>` + srow('✨ Shiny', t.s, t.n, 'var(--gold)') + srow('IV 100%', t.iv, t.n, 'var(--cyan)');
   const gl = S.games.filter(g => S.avail[g.id] && S.avail[g.id].size);
   if(gl.length){
     h += `<div class="sec">Par jeu (espèces disponibles capturées)</div>`;
