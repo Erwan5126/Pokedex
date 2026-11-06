@@ -268,7 +268,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.17";
+const APP_V = "1.18";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -369,6 +369,7 @@ const S = {
   lastVisible:[], lastForms:[], avEdit:'', avKind:'', sheetSid:null, sheetShiny:false, sheetForm:null, sheetFem:false, femDone:false, editGame:null
 };
 const ename = e => S.ov.names[e.key] || e.raw;
+const bname = e => String(ename(e)).replace(/\s*[♂♀]\s*$/, '') || e.sp.n;
 const etypes = e => e.t || e.sp.f[0].t || [];
 const isTracked = e => e.kind === 'base' || (!S.ov.hidden[e.key] && !!S.settings.kinds[e.kind]);
 const gameById = id => S.games.find(g => g.id === id);
@@ -952,7 +953,7 @@ function renderSheet(){
   const hb = `<button class="hb st ${sh ? 'on' : ''}" data-a="shiny" title="Afficher en shiny">${sh ? '★' : '☆'}</button>` +
     (sf.fem ? `<button class="hb sm ${!femView ? 'on' : ''}" data-a="sexv" data-v="0" title="Visuel mâle">♂</button><button class="hb sf ${femView ? 'on' : ''}" data-a="sexv" data-v="1" title="Visuel femelle">♀</button>` : '');
   h += `<div class="hero"><div class="art"><img crossorigin="anonymous" src="${artUrl(hero, sh)}" data-fb="${sprUrl(hero, sh)}" onerror="${FB}" alt=""></div>` +
-    `<div style="min-width:0"><div class="h1">${esc(sf === base ? sp.n : ename(sf))}</div><div class="mute" style="font-weight:700;font-size:13px">${esc(cap(sf === base ? sp.e : sf.key))}${sf !== base ? ' · ' + (KINDS[sf.kind] || '') : ''}</div><div class="types">${typeChips(etypes(sf))}</div><div class="hbtns">${hb}</div></div></div>`;
+    `<div style="min-width:0"><div class="h1">${esc(bname(sf))}</div><div class="mute" style="font-weight:700;font-size:13px">${esc(cap(sf === base ? sp.e : sf.key))}${sf !== base ? ' · ' + (KINDS[sf.kind] || '') : ''}</div><div class="types">${typeChips(etypes(sf))}</div><div class="hbtns">${hb}</div></div></div>`;
   const fg = S.view.game ? gameById(S.view.game) : null;
   h += `<div class="sec">Ma collection${fg ? ` · <span style="color:${fg.c}">dispo dans ${esc(fg.n)}</span>` : ''}</div>`;
   for(const e of forms){
@@ -964,7 +965,7 @@ function renderSheet(){
     if(na) parts.push('pas dans ' + esc(fg.n));
     const tag = parts.length ? `<div class="fk${na ? ' na' : ''}">${parts.join(' · ')}</div>` : '';
     const le = look(e), gendered = !!e.fem;
-    h += `<div class="frow ${hid || off ? 'hid' : ''}${na ? ' na' : ''}${e === sf ? ' sel' : ''}" data-a="sel" data-k="${esc(e.key)}"><div class="ftop"><img crossorigin="anonymous" src="${sprUrl(le, sh)}" data-fb="${artUrl(le, sh)}" onerror="${FB}" alt=""><div class="fname">${esc(e === base ? sp.n : ename(e))}${gendered ? ' <span class="mute sm">♂ ♀</span>' : ''}${tag}</div>` +
+    h += `<div class="frow ${hid || off ? 'hid' : ''}${na ? ' na' : ''}${e === sf ? ' sel' : ''}" data-a="sel" data-k="${esc(e.key)}"><div class="ftop"><img crossorigin="anonymous" src="${sprUrl(le, sh)}" data-fb="${artUrl(le, sh)}" onerror="${FB}" alt=""><div class="fname">${esc(bname(e))}${gendered ? ' <span class="mute sm">♂ ♀</span>' : ''}${tag}</div>` +
       (S.adminMode ? `<button class="btn sm" data-a="ren" data-k="${esc(e.key)}">✎</button>` + (e.kind !== 'base' ? `<button class="btn sm" data-a="hide" data-k="${esc(e.key)}">${hid ? 'Afficher' : 'Masquer'}</button>` : '') : '') +
       `</div><div class="tg">${gendered ? `<button class="t t-m ${p.m ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="m">✓ ♂</button><button class="t t-f ${p.f ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="f">✓ ♀</button>` : tbtn(e, p, 'c', '✓ Capturé')}${tbtn(e, p, 's', '✨ Shiny')}${tbtn(e, p, 'iv', 'IV 100%')}` +
       `<select class="gsel" data-k="${esc(e.key)}"><option value="">Jeu de capture…</option>${S.games.map(g => `<option value="${g.id}" ${p.g === g.id ? 'selected' : ''}>${esc(g.a)} — ${esc(g.n)}</option>`).join('')}</select></div></div>`;
