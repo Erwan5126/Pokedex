@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Pokédex — Erwan</title>
 <meta name="theme-color" content="#0b0f24">
+<script>try{var t=localStorage.getItem('pdx-theme')||'dark';document.documentElement.dataset.theme=(t==='light'||(t==='auto'&&matchMedia('(prefers-color-scheme: light)').matches))?'light':'dark';}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
@@ -17,6 +18,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0b0f24;--bg2:#10163a;--card:#161f48;--card2:#1c2757;--line:rgba(255,255,255,.08);--text:#e8ecff;--mute:#8a93c4;--accent:#7c5cff;--accent2:#a78bfa;--red:#ff5c6c;--gold:#ffd166;--green:#3ddc97;--cyan:#4cc9f0;--home:#26c6da;--r:14px;--hh:58px}
+:root[data-theme=light]{--bg:#eef1f8;--bg2:#ffffff;--card:#ffffff;--card2:#e7ebf6;--line:rgba(20,30,80,.14);--text:#141a36;--mute:#5c6590;--accent:#6a4cf0;--accent2:#5b3fe0;--red:#e5384b;--gold:#d99a00;--green:#16a56d;--cyan:#118fb3;--home:#0f97a8;color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+[data-theme=light] body{background:radial-gradient(1200px 600px at 85% -10%,#cfc4ff66,transparent),radial-gradient(900px 500px at -10% 10%,#c3dcff66,transparent),var(--bg)}
+[data-theme=light] header{background:rgba(255,255,255,.9)}
+[data-theme=light] .adminbar{background:#fff0f2}
+[data-theme=light] .gen.on{background:linear-gradient(180deg,#e6dfff,var(--card))}
+[data-theme=light] .card.got{background:linear-gradient(180deg,#e2f6ec,var(--card));border-color:rgba(22,165,109,.45)}
+[data-theme=light] .card.got.full{background:linear-gradient(180deg,#fff0c4,var(--card));border-color:rgba(217,154,0,.7);box-shadow:0 0 12px rgba(217,154,0,.18)}
+[data-theme=light] .card.sh{border-color:rgba(217,154,0,.7)}
+[data-theme=light] .card img.miss,[data-theme=light] .ev.miss img{opacity:.45}
+[data-theme=light] .ov{background:rgba(20,26,54,.35)}
+[data-theme=light] .art{background:radial-gradient(circle,#dde2ff,transparent 70%)}
+[data-theme=light] .bxbar{background:rgba(255,255,255,.95)}
+[data-theme=light] .slot.miss{border-color:rgba(20,30,80,.28)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:Nunito,system-ui,sans-serif}
@@ -113,6 +128,18 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .ev.got{border-color:rgba(61,220,151,.45)}
 .ev.full{border-color:rgba(255,209,102,.6)}
 .ev.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.ach{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 10px;margin-bottom:6px}
+.ach .ai{font-size:22px;width:30px;text-align:center;flex:none}
+.ach .ab{flex:1;min-width:0}
+.ach .an{font-weight:800;font-size:13px}
+.ach .ad{color:var(--mute);font-size:11px;font-weight:700}
+.ach .sbar{margin-top:5px;height:6px}
+.ach .sbar i{background:var(--accent)}
+.ach.done .sbar i{background:var(--gold)}
+.medals{display:flex;gap:4px;flex:none}
+.medal{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);background:transparent}
+.medal.on.m0{background:#cd7f32;border-color:#cd7f32}.medal.on.m1{background:#c3cad6;border-color:#c3cad6}
+.medal.on.m2{background:var(--gold);border-color:var(--gold)}.medal.on.m3{background:#7fe3ff;border-color:#7fe3ff}
 .frow.na{opacity:.38;filter:grayscale(.85)}
 .fk.na{color:var(--mute)}
 .empty{text-align:center;padding:60px 20px;color:var(--mute);font-weight:700}
@@ -267,6 +294,7 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
       <div class="logo px"><span class="ball"></span><span class="lt">POKÉDEX</span></div>
       <div class="pills" id="pills"></div>
       <button class="ib" id="bBox" title="Boîtes HOME (rangement et PDF)">📦</button>
+      <button class="ib" id="bAch" title="Succès">🏆</button>
       <button class="ib" id="bStats" title="Statistiques">📊</button>
       <button class="ib" id="bAdmin" title="Mode admin" hidden>🔑</button>
       <button class="ib" id="bSet" title="Réglages">⚙️</button>
@@ -327,7 +355,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.27";
+const APP_V = "1.29";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -347,7 +375,16 @@ const TYPES = ['normal','fighting','flying','poison','ground','rock','bug','ghos
 const TYPE_FR = ['Normal','Combat','Vol','Poison','Sol','Roche','Insecte','Spectre','Acier','Feu','Eau','Plante','Électrik','Psy','Glace','Dragon','Ténèbres','Fée'];
 const TYPE_C = ['#9fa19f','#ff8000','#81b9ef','#9141cb','#915121','#afa981','#91a119','#704170','#60a1b8','#e62829','#2980ef','#3fa129','#e0ad00','#ef4179','#3dcef3','#5060e1','#624d4e','#ef70ef'];
 const STATUS = [['all','Tous'],['miss','Manquants'],['part','Incomplets'],['c','Capturés'],['full','Complets ★'],['nos','Shiny manquants'],['s','Shiny'],['noiv','IV manquants']];
-const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true,carousel:true};
+const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true,carousel:true,theme:'dark'};
+// Thème : sombre, clair ou automatique (selon l'appareil) ; mémorisé aussi sur l'appareil pour éviter un flash au chargement
+const lightMQ = matchMedia('(prefers-color-scheme: light)');
+function applyTheme(){
+  const t = S.settings.theme || 'dark', light = t === 'light' || (t === 'auto' && lightMQ.matches);
+  document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  const m = document.querySelector('meta[name=theme-color]'); if(m) m.content = light ? '#eef1f8' : '#0b0f24';
+  try { localStorage.setItem('pdx-theme', t); } catch(e){}
+}
+lightMQ.addEventListener('change', () => applyTheme());
 const SW = 'sword-shield,the-isle-of-armor,the-crown-tundra', SV = 'scarlet-violet,the-teal-mask,the-indigo-disk';
 const DEFAULT_GAMES = [
   {id:'rouge',n:'Rouge',a:'R',c:'#e3350d',gen:1,vg:'red-blue'},
@@ -438,8 +475,15 @@ const artUrl = (e, shiny) => (typeof e.spr === 'number' || String(e.spr).startsW
 /* ---------- Disponibilité par forme ----------
    config/avail : { <jeu>: [n° d'espèces], F_<jeu>: {i:[clés forcées dispo], x:[clés forcées absentes]} }
    Une forme est dispo si son espèce est dans la liste du jeu ET (forcée dispo, ou règle par défaut sans exclusion). */
+// Région d'une forme d'après son nom (ex. « meowth-galar »), avec la liste des régions fournie par PokéAPI
+let regRe = null, regKey = '';
+function regionOf(name){
+  const all = {...REG_GEN, ...(S.regionGen || {})}, k = Object.keys(all).join('|');
+  if(k !== regKey){ regKey = k; regRe = new RegExp('-(' + k + ')(-|$)'); }
+  return (String(name).match(regRe) || [])[1] || null;
+}
 function formDefault(g, e){
-  if(!g) return false;
+  if(!g || e.nw) return false; // forme nouvelle (ajoutée après coup à une espèce) : non affectée par défaut
   const known = KNOWN_G.has(g.id), gen = g.gen || 0;
   switch(e.kind){
     case 'base': return true;
@@ -447,9 +491,10 @@ function formDefault(g, e){
     case 'mega': return known ? MEGA_G.has(g.id) : (gen === 6 || gen === 7);
     case 'gmax': return known ? GMAX_G.has(g.id) : gen === 8;
     case 'regional': {
-      const r = (e.key.match(/-(alola|galar|hisui|paldea)(-|$)/) || [])[1];
+      const r = regionOf(e.key);
       if(!r) return gen === 0 || gen >= 7;
-      return known ? REG_G[r].includes(g.id) : (gen === 0 || gen >= REG_GEN[r]);
+      if(known && REG_G[r]) return REG_G[r].includes(g.id);
+      return gen === 0 || gen >= ((S.regionGen || {})[r] || REG_GEN[r] || 7); // nouvelle région : jeux de sa génération et suivants
     }
     case 'alt': return !e.key.includes('-totem');
     default: return true;
@@ -558,6 +603,7 @@ $('#lPass').addEventListener('keydown', e => { if(e.key === 'Enter') $('#lIn').c
 
 /* ---------- Démarrage ---------- */
 async function start(){
+  achQuiet = Date.now() + 8000;
   await ensureUser();
   await loadCatalog();
   onSnapshot(uref(), snap => {
@@ -565,6 +611,8 @@ async function start(){
     S.prog = d.p || {};
     if(!S.femDone && !snap.metadata.fromCache){ S.femDone = true; migrateFem(); }
     S.settings = {...DEF_SET, ...(d.settings || {}), kinds:{...DEF_SET.kinds, ...((d.settings || {}).kinds || {})}};
+    applyTheme();
+    S.ach = d.ach || {};
     if(!snap.metadata.hasPendingWrites) scheduleRender();
   });
   onSnapshot(doc(db, 'config', 'games'), s => { S.games = (s.data() || {}).list || []; scheduleRender(); });
@@ -594,13 +642,13 @@ async function ensureUser(){
 async function loadCatalog(){
   const snap = await getDocs(collection(db, 'catalog'));
   const docs = [];
-  snap.forEach(d => { if(/^g\d+$/.test(d.id)) docs.push(d.data()); });
+  snap.forEach(d => { if(/^g\d+$/.test(d.id)) docs.push(d.data()); else if(d.id === 'meta'){ S.regionGen = d.data().regions || {}; S.genName = d.data().genNames || {}; } });
   buildCatalog(docs);
 }
 function buildCatalog(docs){
   S.species = []; S.byKey = {}; S.bySid = {};
   for(const d of docs) for(const sp of (d.list || [])){
-    const s = {i:sp.i, n:sp.n, e:sp.e, g:sp.g, f:[]};
+    const s = {i:sp.i, n:sp.n, e:sp.e, g:sp.g, c:sp.c || 0, f:[]};
     const fe = sp.f.find(f => f.d === 'fem');
     // -f / -m seulement si l'espèce a des variétés male/female (évite Zarbi F / Zarbi M)
     const femRe = sp.f.some(f => /-female(-|$)/.test(f.k)) ? /-(female|f)(-|$)/ : /^$/;
@@ -608,7 +656,7 @@ function buildCatalog(docs){
     for(let f of sp.f){
       if(f.d === 'fem' || S.byKey[f.k] || (f.d !== 'base' && femRe.test(f.k))) continue;
       if(fe && f.d === 'base') f = {...f, n:String(f.n).replace(/\s*♂$/, '')};
-      const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null};
+      const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null, nw:f.nw || null};
       s.f.push(e); S.byKey[f.k] = e; own[f.k] = e;
     }
     if(fe && s.f[0]){ s.f[0].fem = fe.s; s.f[0].femKey = fe.k; }
@@ -619,7 +667,7 @@ function buildCatalog(docs){
       let m = cands.map(c => own[c]).find(Boolean);
       if(!m && /-(female|f)$/.test(f.k) && s.f[0]) m = s.f[0];
       if(m && !m.fem){ m.fem = f.s; m.femKey = f.k; if(m.kind !== 'base') m.raw = String(m.raw).replace(/\s*(mâle|male|♂)\s*$/i, '').trim(); }
-      else { const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null}; s.f.push(e); S.byKey[f.k] = e; }
+      else { const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null, nw:f.nw || null}; s.f.push(e); S.byKey[f.k] = e; }
     }
     if(s.f.length){ S.species.push(s); S.bySid[s.i] = s; }
   }
@@ -631,7 +679,7 @@ function buildCatalog(docs){
 let rq = 0;
 function scheduleRender(){ if(rq) return; rq = requestAnimationFrame(() => { rq = 0; renderAll(); }); }
 function renderAll(){
-  renderPills(); renderGens(); renderFilters(); renderGrid();
+  renderPills(); renderGens(); renderFilters(); renderGrid(); scheduleAch();
   if(S.sheetSid) renderSheet();
   const typing = document.activeElement && $('#modal').contains(document.activeElement) && document.activeElement.matches('input:not([type=checkbox])');
   if($('#ovModal').classList.contains('show') && S.modalRender && !typing) S.modalRender();
@@ -680,7 +728,7 @@ function genBtn(g, label, t){
 }
 function renderGens(){
   let h = genBtn(0, 'Tous', spTally());
-  for(const g of S.gens) h += genBtn(g, `Gen ${g} · ${GEN[g] || ''}`, spTally(sp => sp.g === g));
+  for(const g of S.gens) h += genBtn(g, `Gen ${g} · ${genName(g)}`, spTally(sp => sp.g === g));
   $('#gens').innerHTML = h;
 }
 function buildStatic(){
@@ -689,6 +737,7 @@ function buildStatic(){
 }
 // Ordre des formes : base / alternatives / cosmétiques (ordre officiel entre elles), puis régionales, puis Méga, puis Gigamax
 const KIND_RANK = {regional:1, mega:2, gmax:3};
+const genName = g => GEN[g] || (S.genName || {})[g] || '';
 function byOrder(l){
   return l.map((e, i) => [e, KIND_RANK[e.kind] || 0, e.o ?? 1e6 + i, i])
     .sort((a, b) => a[1] - b[1] || a[2] - b[2] || a[3] - b[3]).map(x => x[0]);
@@ -887,7 +936,7 @@ function renderGrid(){
     // Édition de la dispo : une carte par forme
     const forms = [];
     for(const sp of list) for(const e of sp.f){
-      if(S.ov.hidden[e.key] || (S.avKind && e.kind !== S.avKind) || (S.view.kind && e.kind !== S.view.kind)) continue;
+      if(S.ov.hidden[e.key] || (S.avKind && (S.avKind === 'new' ? !e.nw : e.kind !== S.avKind)) || (S.view.kind && e.kind !== S.view.kind)) continue;
       forms.push(e);
     }
     S.lastForms = forms; n = forms.length;
@@ -907,6 +956,7 @@ function renderGrid(){
   if(!n) empty.textContent = ag ? 'Aucune forme ne correspond à ces filtres.' : 'Aucun Pokémon ne correspond à ces filtres.';
 }
 function refreshCard(key){
+  scheduleAch();
   const e = S.byKey[key]; if(!e) return;
   const el = document.querySelector(`.card[data-s="${e.sp.i}"]`);
   if(el) el.outerHTML = cardHtml(e.sp);
@@ -1017,6 +1067,7 @@ $('#grid').addEventListener('click', ev => {
 });
 $('#bStats').onclick = openStats;
 $('#bBox').onclick = openBoxes;
+$('#bAch').onclick = () => openModal(renderAch);
 $('#bSet').onclick = openSettings;
 $('#bAdmin').onclick = () => { S.adminMode = !S.adminMode; localStorage.setItem('pdx-admin', S.adminMode ? '1' : '0'); applyAdmin(); if(S.sheetSid) renderSheet(); };
 $('#aSync').onclick = syncCatalog;
@@ -1028,7 +1079,7 @@ function renderAvBar(ag){
   if(!ag){ bar.classList.remove('show'); bar.innerHTML = ''; return; }
   const sp = (S.avail[ag.id] || new Set()).size;
   const forms = S.lastForms, on = forms.filter(e => formAvail(ag.id, e)).length;
-  const kinds = [['', 'Toutes'], ...Object.entries(KINDS)];
+  const kinds = [['', 'Toutes'], ...Object.entries(KINDS), ...(Object.values(S.byKey).some(e => e.nw) ? [['new', '🆕 Nouvelles']] : [])];
   bar.innerHTML = `<span class="dot" style="background:${ag.c}"></span><span style="flex:1 1 180px">${esc(ag.n)} · <span class="mute">${sp} espèces dispo · ${on}/${forms.length} formes affichées cochées</span></span>` +
     `<button class="btn sm" data-av="all">Tout cocher (affichées)</button><button class="btn sm" data-av="none">Tout décocher (affichées)</button><button class="btn sm dan" data-av="quit">Terminer</button>` +
     `<div class="chips">${kinds.map(([k, l]) => `<button class="chip ${S.avKind === k ? 'on' : ''}" data-avk="${k}">${l}</button>`).join('')}</div>`;
@@ -1067,7 +1118,7 @@ function renderSheet(){
   const forms = byOrder(sp.f.filter(e => e.kind === 'base' || S.adminMode || isTracked(e) || (e.kind === S.view.kind && !S.ov.hidden[e.key])));
   const l = navList(), i = l.indexOf(sp.i);
   let h = `<div class="shead"><button class="ib" data-a="prev" ${i <= 0 ? 'disabled' : ''}>‹</button>` +
-    `<div class="px" style="font-size:9px;color:var(--mute);text-align:center">#${pad(sp.i)} · GEN ${sp.g} ${esc((GEN[sp.g] || '').toUpperCase())}</div>` +
+    `<div class="px" style="font-size:9px;color:var(--mute);text-align:center">#${pad(sp.i)} · GEN ${sp.g} ${esc(genName(sp.g).toUpperCase())}</div>` +
     `<div style="display:flex;gap:6px"><button class="ib" data-a="next" ${i < 0 || i >= l.length - 1 ? 'disabled' : ''}>›</button><button class="ib" data-a="close">✕</button></div></div>`;
   const hb = `<button class="hb st ${sh ? 'on' : ''}" data-a="shiny" title="Afficher en shiny">${sh ? '★' : '☆'}</button>` +
     (sf.fem ? `<button class="hb sm ${!femView ? 'on' : ''}" data-a="sexv" data-v="0" title="Visuel mâle">♂</button><button class="hb sf ${femView ? 'on' : ''}" data-a="sexv" data-v="1" title="Visuel femelle">♀</button>` : '');
@@ -1214,7 +1265,7 @@ function renderBoxes(){
   const o = bxOpts(), sl = boxSlots(), got = sl.filter(s => s.got).length, nb = Math.ceil(sl.length / 30);
   $('#bxBar').innerHTML = `<div class="h1">📦 Boîtes HOME</div>` +
     `<button class="btn pri" data-bx="print">🖨️ PDF / Imprimer</button><button class="ib" data-bx="close" title="Fermer">✕</button>` +
-    `<div class="bxopt"><select data-bx="gen"><option value="0">Toutes les générations</option>${S.gens.map(g => `<option value="${g}" ${o.gen === g ? 'selected' : ''}>Gen ${g} · ${GEN[g] || ''}</option>`).join('')}</select>` +
+    `<div class="bxopt"><select data-bx="gen"><option value="0">Toutes les générations</option>${S.gens.map(g => `<option value="${g}" ${o.gen === g ? 'selected' : ''}>Gen ${g} · ${genName(g)}</option>`).join('')}</select>` +
     `<label><input type="checkbox" data-bx="one" ${o.one ? 'checked' : ''}> Une case par espèce</label>` +
     BOXK.map(([k, l]) => `<label style="${o.one ? 'opacity:.4' : ''}"><input type="checkbox" data-bx="k" data-k="${k}" ${o.k[k] ? 'checked' : ''} ${o.one ? 'disabled' : ''}> ${l}</label>`).join('') + `</div>`;
   let h = `<div class="bxsum">${sl.length} cases · ${got} déjà rangées · ${sl.length - got} à laisser vides (pointillés) · ${nb} boîte${nb > 1 ? 's' : ''}</div><div class="bxs">`;
@@ -1250,6 +1301,116 @@ $('#bxBar').addEventListener('click', async ev => {
     window.print();
   }
 });
+
+/* ---------- Succès ----------
+   Calculés à partir de la progression ; les objectifs « tout » suivent la taille du catalogue (Gen 10…).
+   Un palier obtenu est mémorisé avec sa date (users/<uid>.ach) et reste obtenu même si de nouveaux Pokémon arrivent. */
+const MEDAL = ['Bronze', 'Argent', 'Or', 'Platine'];
+const REG_FR = {alola:'Alola', galar:'Galar', hisui:'Hisui', paldea:'Paldéa'};
+const capF = e => { const p = S.prog[e.key] || {}; return !!(p.c || p.m || p.f); };
+const spCap = sp => sp.f.some(capF);
+function achDefs(){
+  const D = [], vis = [], spAll = S.species;
+  for(const sp of spAll) for(const e of sp.f) if(!S.ov.hidden[e.key]) vis.push(e);
+  // tiers : nombres fixes + éventuellement le total (« all ») ; les paliers fixes ≥ total sont ignorés
+  const add = (cat, id, icon, name, desc, val, fixed, total) => {
+    if(total !== undefined && !total) return;
+    const tiers = fixed.filter(n => total === undefined || n < total).map(n => ({n, key:`${id}:${n}`}));
+    if(total !== undefined) tiers.push({n:total, all:true, key:`${id}:all:${total}`});
+    if(tiers.length) D.push({cat, id, icon, name, desc, val, tiers});
+  };
+  const cnt = (l, f) => l.reduce((n, x) => n + (f(x) ? 1 : 0), 0);
+  const prog = e => S.prog[e.key] || {};
+  // Progression
+  add('Progression', 'trainer', '🎒', 'Dresseur', 'Espèces capturées (au moins une forme)', cnt(spAll, spCap), [100, 500], spAll.length);
+  const spFull = sp => { const u = spUnits(sp.f.filter(isTracked)); return u.n > 0 && u.c === u.n; };
+  add('Progression', 'collector', '⭐', 'Collectionneur', 'Espèces complètes ★ (toutes les formes suivies)', cnt(spAll, spFull), [50, 250], spAll.length);
+  let gensDone = 0;
+  for(const g of S.gens){
+    const l = spAll.filter(sp => sp.g === g), c = cnt(l, spCap);
+    if(l.length && c === l.length) gensDone++;
+    add('Progression', 'gen' + g, '🗺️', `Pokédex de ${genName(g) || 'Gen ' + g}`, `Toutes les espèces de la Gen ${g} capturées`, c, [], l.length);
+  }
+  add('Progression', 'allgens', '🌍', 'Maître des régions', 'Toutes les générations complétées', gensDone, [], S.gens.length);
+  // Formes
+  const ac = vis.filter(e => e.kind === 'alt' || e.kind === 'cosm');
+  add('Formes', 'forms', '🔀', 'Polymorphe', 'Formes alternatives et cosmétiques capturées', cnt(ac, capF), [50, 150], ac.length);
+  const regs = {};
+  for(const e of vis) if(e.kind === 'regional'){ const r = regionOf(e.key); if(r) (regs[r] = regs[r] || []).push(e); }
+  for(const r of Object.keys(regs).sort((a, b) => ((S.regionGen || {})[a] || REG_GEN[a] || 99) - ((S.regionGen || {})[b] || REG_GEN[b] || 99)))
+    add('Formes', 'reg-' + r, '🧭', `Globe-trotter : ${REG_FR[r] || cap(r)}`, `Toutes les formes régionales de ${REG_FR[r] || cap(r)}`, cnt(regs[r], capF), [], regs[r].length);
+  const gd = vis.filter(e => e.fem);
+  add('Formes', 'fem', '⚥', "Ni l'un ni l'autre", 'Femelles ♀ des espèces avec différences ♂/♀', cnt(gd, e => prog(e).f), [], gd.length);
+  const mg = vis.filter(e => e.kind === 'mega'), gm = vis.filter(e => e.kind === 'gmax');
+  add('Formes', 'mega', '💎', 'Méga-collection', 'Toutes les Méga-Évolutions', cnt(mg, capF), [], mg.length);
+  add('Formes', 'gmax', '🌋', 'Gigantesque', 'Toutes les formes Gigamax', cnt(gm, capF), [], gm.length);
+  // Familles
+  const fam = (id, icon, name, desc, ids) => { const l = vis.filter(e => ids.includes(e.sp.i)); add('Familles', id, icon, name, desc, cnt(l, capF), [], l.length > 1 ? l.length : 0); };
+  fam('unown', '🔤', 'Alphabet', 'Toutes les formes de Zarbi', [201]);
+  fam('vivillon', '🦋', 'Tour du monde', 'Tous les motifs de Prismillon', [666]);
+  fam('alcremie', '🍰', 'Pâtissier', 'Toutes les formes de Charmilly', [869]);
+  fam('furfrou', '✂️', 'Coiffeur', 'Toutes les coupes de Couafarel', [676]);
+  fam('flabebe', '🌸', 'Jardinier', 'Toutes les couleurs de Flabébé, Floette et Florges', [669, 670, 671]);
+  const chains = {};
+  for(const sp of spAll) if(sp.c) (chains[sp.c] = chains[sp.c] || []).push(sp);
+  const cl = Object.values(chains).filter(l => l.length > 1);
+  add('Familles', 'chains', '🧬', 'Lignée complète', "Lignées d'évolution entièrement capturées", cnt(cl, l => l.every(spCap)), [10, 50], cl.length);
+  // Shiny & IV
+  add('Shiny & IV', 'shiny', '✨', 'Chasseur de shiny', 'Formes shiny capturées', cnt(vis, e => prog(e).s), [1, 50, 200, 500]);
+  add('Shiny & IV', 'shinyfull', '🌟', 'Shiny complet', 'Espèces dont toutes les formes suivies sont shiny', cnt(spAll, sp => { const l = sp.f.filter(isTracked); return l.length && l.every(e => prog(e).s); }), [10, 50]);
+  add('Shiny & IV', 'iv', '💯', 'Perfectionniste', 'Formes à IV 100 %', cnt(vis, e => prog(e).iv), [10, 100, 500]);
+  // Jeux
+  for(const g of S.games){
+    if(!S.avail[g.id] || !S.avail[g.id].size) continue;
+    const l = spAll.filter(sp => inGame(g.id, sp));
+    add('Jeux', 'game-' + g.id, '🎮', `Maître : ${g.n}`, `Toutes les espèces dispo dans ${g.n} capturées`, cnt(l, spCap), [], l.length);
+    const ps = partners(g.id);
+    if(ps.length){ const x = spAll.filter(sp => spExcl(g.id, sp, ps)); add('Jeux', 'excl-' + g.id, '🔒', `Exclusivités : ${g.n}`, `Toutes les exclusivités de ${g.n} capturées`, cnt(x, spCap), [], x.length); }
+  }
+  const sl = boxSlots(), nb = Math.ceil(sl.length / 30);
+  let full = 0; for(let b = 0; b < nb; b++) if(sl.slice(b * 30, b * 30 + 30).every(s => s.got)) full++;
+  add('Jeux', 'boxes', '📦', 'Boîtes HOME', 'Boîtes entièrement remplies (selon tes options de la vue Boîtes)', full, [1, 10], nb);
+  return D;
+}
+let achT = 0, achQuiet = Date.now() + 8000;
+function scheduleAch(){ clearTimeout(achT); achT = setTimeout(checkAch, 900); }
+function checkAch(){
+  if(!S.user || !S.species.length || !S.ach) return;
+  const fresh = [];
+  for(const d of achDefs()) d.tiers.forEach((t, i) => {
+    if(d.val >= t.n && !S.ach[t.key]) fresh.push({key:t.key, label:`${d.name} · ${MEDAL[i + Math.max(0, 3 - d.tiers.length)] || ''}`});
+  });
+  if(!fresh.length) return;
+  const now = Date.now(), args = [];
+  for(const f of fresh){ S.ach[f.key] = now; args.push(new FieldPath('ach', f.key), now); }
+  updateDoc(uref(), ...args).catch(err => console.error(err));
+  // au premier chargement, un seul message récapitulatif
+  if(now < achQuiet) toast(`🏆 ${fresh.length} succès débloqué${fresh.length > 1 ? 's' : ''}`);
+  else toast(fresh.length === 1 ? `🏆 Succès débloqué : ${fresh[0].label}` : `🏆 ${fresh.length} succès débloqués, dont ${fresh[0].label}`);
+}
+function renderAch(){
+  const D = achDefs(), ach = S.ach || {}, fmt = ts => new Date(ts).toLocaleDateString('fr-FR');
+  let got = 0, tot = 0;
+  for(const d of D) for(const t of d.tiers){ tot++; if(ach[t.key]) got++; }
+  let h = mhead('🏆 Succès') + `<p class="mute sm" style="font-weight:700">${got} palier${got > 1 ? 's' : ''} obtenu${got > 1 ? 's' : ''} sur ${tot}. Les objectifs « tout » s'adaptent quand de nouveaux Pokémon arrivent ; un palier obtenu le reste.</p>`;
+  let cat = '';
+  for(const d of D){
+    if(d.cat !== cat){ cat = d.cat; h += `<div class="sec">${esc(cat)}</div>`; }
+    const off = Math.max(0, 3 - d.tiers.length);
+    // palier « tout » obtenu sur un ancien total (catalogue agrandi depuis)
+    const oldAll = Object.keys(ach).filter(k => k.startsWith(d.id + ':all:') && !d.tiers.some(t => t.key === k));
+    const medals = d.tiers.map((t, i) => {
+      const k = ach[t.key] ? t.key : (t.all && oldAll[0]) || null, on = !!(k && ach[k]);
+      return `<span class="medal m${i + off}${on ? ' on' : ''}" title="${MEDAL[i + off]} : ${t.n}${on ? ' · obtenu le ' + fmt(ach[k]) + (k !== t.key ? ' (sur ' + k.split(':').pop() + ')' : '') : ''}"></span>`;
+    }).join('');
+    const next = d.tiers.find(t => !ach[t.key]);
+    const done = !next, tgt = next ? next.n : d.tiers[d.tiers.length - 1].n;
+    const txt = done ? `Terminé · ${d.val}` : `${Math.min(d.val, tgt)} / ${tgt}${next.all && oldAll.length ? ' · nouveau palier' : ''}`;
+    h += `<div class="ach${done ? ' done' : ''}"><div class="ai">${d.icon}</div><div class="ab"><div class="an">${esc(d.name)}</div><div class="ad">${esc(d.desc)} · ${txt}</div>` +
+      `<div class="sbar"><i style="width:${done ? 100 : pct(Math.min(d.val, tgt), tgt)}%"></i></div></div><div class="medals">${medals}</div></div>`;
+  }
+  $('#modal').innerHTML = h;
+}
 
 /* ---------- Admin : fiches ---------- */
 async function renameForm(key){
@@ -1305,7 +1466,7 @@ function kindOf(name){
   if(name.includes('-totem')) return 'alt';
   if(name.includes('-gmax')) return 'gmax';
   if(/-mega(-|$)/.test(name)) return 'mega';
-  if(/-(alola|galar|hisui|paldea)(-|$)/.test(name)) return 'regional';
+  if(regionOf(name) && !/-cap$/.test(name)) return 'regional'; // les casquettes de Pikachu (« -alola-cap ») ne sont pas régionales
   return 'alt';
 }
 function formFr(f, base){ if(!f) return null; const full = frName(f.names); if(full) return full; const fn = frName(f.form_names); return fn ? `${base} (${fn})` : null; }
@@ -1316,11 +1477,16 @@ async function syncCatalog(){
   if(!confirm('Synchroniser le catalogue complet depuis PokéAPI ?\nCompte 2 à 4 minutes, garde la page ouverte.\nLes noms personnalisés, formes masquées et dispos par jeu sont conservés.')) return;
   P.show('Synchronisation PokéAPI');
   try {
+    P.set('Régions', 0, 1);
+    const rl = await jget(API + 'region?limit=100'), rg = {}, gn = {};
+    const rds = (await Promise.all(((rl && rl.results) || []).map(r => jget(r.url)))).filter(Boolean).sort((a, b) => a.id - b.id);
+    for(const d of rds){ if(!d.main_generation) continue; const g = idFromUrl(d.main_generation.url); rg[d.name] = g; if(!gn[g]) gn[g] = frName(d.names) || cap(d.name); }
+    S.regionGen = rg; S.genName = gn;
     P.set('Liste des espèces', 0, 1);
     const list = await jget(API + 'pokemon-species?limit=2000');
     const species = (await pmap(list.results, 16, async r => {
       const s = await jget(r.url); if(!s) return null;
-      return {i:s.id, e:s.name, n:frName(s.names) || cap(s.name), g:idFromUrl(s.generation.url), gd:!!s.has_gender_differences,
+      return {i:s.id, e:s.name, n:frName(s.names) || cap(s.name), g:idFromUrl(s.generation.url), gd:!!s.has_gender_differences, c:s.evolution_chain ? idFromUrl(s.evolution_chain.url) : 0,
         v:s.varieties.map(v => ({d:v.is_default, name:v.pokemon.name, url:v.pokemon.url}))};
     }, (d, n) => P.set('Espèces', d, n))).filter(Boolean);
 
@@ -1345,7 +1511,10 @@ async function syncCatalog(){
     }, (d, n) => P.set('Pokémon et formes', d, n));
 
     P.set('Enregistrement', 0, 1);
-    const gens = {}; let entries = 0;
+    const gens = {}; let entries = 0, nNew = 0;
+    // Formes apparues depuis la dernière synchro sur une espèce déjà connue : « nouvelles », dispo nulle part tant que l'admin ne les affecte pas
+    const prevKeys = new Set(), prevNw = {}, prevSp = new Set(Object.keys(S.bySid).map(Number)), now = Date.now();
+    for(const e of Object.values(S.byKey)){ prevKeys.add(e.key); if(e.femKey) prevKeys.add(e.femKey); if(e.nw) prevNw[e.key] = e.nw; }
     for(const s of species){
       const def = s.v.find(v => v.d && v.id) || s.v.find(v => v.id); if(!def) continue;
       const bn = def.bn || s.n; // nom de la forme par défaut quand l'espèce n'a pas de forme « normale »
@@ -1360,16 +1529,20 @@ async function syncCatalog(){
         f.push(o);
       }
       for(const c of (def.cos || [])){ if(seen.has(c.k)) continue; seen.add(c.k); f.push({k:c.k, n:c.n, d:'cosm', s:c.s || def.id, o:c.o ?? null}); }
-      (gens[s.g] = gens[s.g] || []).push({i:s.i, n:s.n, e:s.e, g:s.g, f});
+      if(prevSp.has(s.i)) for(const x of f){
+        if(prevNw[x.k]) x.nw = prevNw[x.k];
+        else if(!prevKeys.has(x.k) && x.d !== 'fem' && x.d !== 'base'){ x.nw = now; nNew++; }
+      }
+      (gens[s.g] = gens[s.g] || []).push({i:s.i, n:s.n, e:s.e, g:s.g, c:s.c || 0, f});
       entries += f.length;
     }
     const batch = writeBatch(db);
     for(const g in gens) batch.set(doc(db, 'catalog', 'g' + g), {list:gens[g].sort((a, b) => a.i - b.i)});
-    batch.set(doc(db, 'catalog', 'meta'), {species:species.length, entries, updatedAt:serverTimestamp()});
+    batch.set(doc(db, 'catalog', 'meta'), {species:species.length, entries, regions:rg, genNames:gn, updatedAt:serverTimestamp()});
     await batch.commit();
     await loadCatalog();
     P.hide(); renderAll();
-    toast(`Catalogue à jour : ${species.length} espèces, ${entries} entrées`);
+    toast(`Catalogue à jour : ${species.length} espèces, ${entries} entrées${nNew ? ` · ${nNew} nouvelle${nNew > 1 ? 's' : ''} forme${nNew > 1 ? 's' : ''} à affecter aux jeux` : ''}`);
   } catch(e){ console.error(e); P.hide(); alert('Échec de la synchronisation : ' + e.message); }
 }
 async function importAvail(g){
@@ -1470,6 +1643,7 @@ $('#ovModal').addEventListener('click', ev => {
   if(acts[a]) acts[a]();
 });
 $('#ovModal').addEventListener('change', ev => {
+  if(ev.target.dataset.set === 'theme'){ S.settings.theme = ev.target.value; saveSettings(); applyTheme(); return; }
   if(ev.target.dataset.set === 'carousel'){ S.settings.carousel = ev.target.checked; saveSettings(); renderGrid(); return; }
   const k = ev.target.dataset.kind; if(!k) return;
   S.settings.kinds[k] = ev.target.checked; saveSettings(); renderAll();
@@ -1516,7 +1690,7 @@ function renderStats(){
   let h = mhead('Statistiques');
   h += `<div class="big4" style="margin-top:12px"><div><b>${pct(st.any, st.n)}%</b><small>${st.any}/${st.n} Pokémon</small></div><div><b style="color:var(--gold)">${st.all}</b><small>complets ★</small></div><div><b style="color:var(--gold)">${t.s}</b><small>shiny</small></div><div><b style="color:var(--cyan)">${t.iv}</b><small>IV parfaits</small></div></div>`;
   h += `<div class="sec">Par génération · <span style="color:var(--green)">au moins une forme</span> / <span style="color:var(--gold)">toutes les formes</span></div>`;
-  for(const g of S.gens){ const x = spTally(sp => sp.g === g); h += srow(`Gen ${g} · ${GEN[g] || ''}`, x.any, x.n) + srow('', x.all, x.n, 'var(--gold)'); }
+  for(const g of S.gens){ const x = spTally(sp => sp.g === g); h += srow(`Gen ${g} · ${genName(g)}`, x.any, x.n) + srow('', x.all, x.n, 'var(--gold)'); }
   h += `<div class="sec">Formes capturées (toutes formes suivies)</div>` + srow('Total', t.c, t.n, 'var(--accent)');
   h += `<div class="sec">Par type de forme</div>`;
   for(const k of Object.keys(KINDS)){ const l = all.filter(e => e.kind === k); if(l.length){ const x = tally(l); h += srow(KINDS[k], x.c, x.n, 'var(--accent)'); } }
@@ -1553,7 +1727,8 @@ function renderSettings(){
   let h = mhead('Réglages');
   h += `<div class="sec">Compte</div><div class="grow"><div style="flex:1"><b>${esc(u.displayName || u.email || 'Invité')}</b><div class="mute sm">${type}${S.isAdmin ? ' · administrateur' : ''}</div></div><button class="btn sm dan" data-a="logout">Se déconnecter</button></div>`;
   h += `<div class="grow"><span class="mute sm" style="font-weight:700">UID</span><span class="code">${esc(u.uid)}</span><button class="btn sm" data-a="uid">Copier</button></div>`;
-  h += `<div class="sec">Affichage</div><label class="chk"><input type="checkbox" data-set="carousel" ${S.settings.carousel !== false ? 'checked' : ''}> Faire défiler les formes sur les cartes <span class="mute sm" style="margin-left:auto">sinon au survol</span></label>`;
+  const th = S.settings.theme || 'dark';
+  h += `<div class="sec">Affichage</div><label class="chk">Thème <select data-set="theme" style="margin-left:auto">${[['dark','Sombre'],['light','Clair'],['auto','Automatique (selon l\'appareil)']].map(([v, l]) => `<option value="${v}" ${th === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label><label class="chk"><input type="checkbox" data-set="carousel" ${S.settings.carousel !== false ? 'checked' : ''}> Faire défiler les formes sur les cartes <span class="mute sm" style="margin-left:auto">sinon au survol</span></label>`;
   h += `<div class="sec">Formes suivies</div><p class="mute sm" style="margin-top:0;font-weight:600">Les formes cochées apparaissent dans les fiches et comptent dans tes statistiques et dans le compteur de formes des cartes.</p>`;
   for(const k of ['regional','mega','gmax','alt','cosm']){
     const n = Object.values(S.byKey).filter(e => e.kind === k && !S.ov.hidden[e.key]).length;
