@@ -190,6 +190,46 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .lnote{color:var(--mute);font-size:12px;text-align:center;margin:0}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-weight:800;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:400;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
+/* Boîtes HOME */
+.bxov{position:fixed;inset:0;z-index:250;background:var(--bg);overflow:auto;-webkit-overflow-scrolling:touch}
+.bxbar{position:sticky;top:0;z-index:2;background:rgba(11,15,36,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bxbar .h1{font-size:17px;flex:1 1 160px}
+.bxopt{display:flex;flex-wrap:wrap;gap:6px;flex-basis:100%;align-items:center}
+.bxopt label{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12px;font-weight:800}
+.bxopt input{width:16px;height:16px;accent-color:var(--accent)}
+.bxwrap{max-width:1200px;margin:0 auto;padding:14px 16px 40px}
+.bxsum{color:var(--mute);font-size:12px;font-weight:700;margin-bottom:12px}
+.bxs{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;break-inside:avoid;page-break-inside:avoid}
+.box h3{margin:0 0 8px;font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.box h3 span:last-child{color:var(--mute);font-weight:700;font-size:11px}
+.bgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.slot{aspect-ratio:1/1.2;border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;background:var(--bg2);overflow:hidden;min-width:0}
+.slot img{width:70%;max-width:44px;aspect-ratio:1;height:auto;object-fit:contain;image-rendering:pixelated;margin:-2px 0 -1px}
+.slot .sx{font-size:6.5px;color:var(--mute);font-family:'Press Start 2P',monospace;margin-top:1px}
+.slot .sn{font-size:8px;font-weight:800;line-height:1.1;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
+.slot.miss{border-style:dashed;border-color:rgba(255,255,255,.22);background:transparent}
+.slot.miss img{opacity:.3;filter:grayscale(1)}
+.slot.miss .sn{color:var(--mute)}
+.slot.void{border:none;background:transparent}
+@media print{
+  @page{size:A4 portrait;margin:8mm}
+  html,body{background:#fff!important;overflow:visible!important;height:auto!important}
+  body>*:not(#boxes){display:none!important}
+  #boxes{position:static;overflow:visible;background:#fff;color:#000}
+  .bxbar{display:none}
+  .bxwrap{padding:0;max-width:none}
+  .bxsum{color:#555}
+  .bxs{grid-template-columns:1fr 1fr;gap:5mm}
+  .box{background:#fff;border:1px solid #999;border-radius:6px;padding:2.5mm}
+  .box h3 span:last-child{color:#555}
+  .slot{background:#fff;border-color:#bbb;border-radius:4px}
+  .slot.miss{border-color:#888;background:#fff}
+  .slot .sn{color:#000}.slot.miss .sn{color:#777}.slot .sx{color:#666}
+  .slot img{max-width:none;width:82%}
+  .slot.miss img{opacity:.35}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 @media(max-width:560px){.logo span.lt{display:none}.pill .lb{display:none}.grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.card img{width:68px;height:68px}.srow{grid-template-columns:86px 1fr 60px}}
 </style>
 </head>
@@ -226,6 +266,7 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
     <div class="hrow">
       <div class="logo px"><span class="ball"></span><span class="lt">POKÉDEX</span></div>
       <div class="pills" id="pills"></div>
+      <button class="ib" id="bBox" title="Boîtes HOME (rangement et PDF)">📦</button>
       <button class="ib" id="bStats" title="Statistiques">📊</button>
       <button class="ib" id="bAdmin" title="Mode admin" hidden>🔑</button>
       <button class="ib" id="bSet" title="Réglages">⚙️</button>
@@ -266,6 +307,7 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
   </main>
 </div>
 
+<div id="boxes" class="bxov" hidden><div class="bxbar" id="bxBar"></div><div class="bxwrap" id="bxBody"></div></div>
 <div class="ov" id="ovSheet"><div class="sheet" id="sheet"></div></div>
 <div class="ov" id="ovModal"><div class="sheet" id="modal"></div></div>
 <div class="ov" id="ovProg"><div class="pbox"><div style="font-weight:800" id="pTitle"></div><div class="pbar"><i id="pBar"></i></div><div class="mute sm" id="pTxt" style="font-weight:700"></div></div></div>
@@ -285,7 +327,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.21";
+const APP_V = "1.23";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -386,7 +428,7 @@ const S = {
   lastVisible:[], lastForms:[], avEdit:'', avKind:'', sheetSid:null, sheetShiny:false, sheetForm:null, sheetFem:false, femDone:false, editGame:null
 };
 const ename = e => S.ov.names[e.key] || e.raw;
-const bname = e => String(ename(e)).replace(/\s*[♂♀]\s*$/, '') || e.sp.n;
+const bname = e => (e.fem ? String(ename(e)).replace(/\s*[♂♀]\s*$/, '') : ename(e)) || e.sp.n;
 const etypes = e => e.t || e.sp.f[0].t || [];
 const isTracked = e => e.kind === 'base' || (!S.ov.hidden[e.key] && !!S.settings.kinds[e.kind]);
 const gameById = id => S.games.find(g => g.id === id);
@@ -968,6 +1010,7 @@ $('#grid').addEventListener('click', ev => {
   openSheet(sp.i);
 });
 $('#bStats').onclick = openStats;
+$('#bBox').onclick = openBoxes;
 $('#bSet').onclick = openSettings;
 $('#bAdmin').onclick = () => { S.adminMode = !S.adminMode; localStorage.setItem('pdx-admin', S.adminMode ? '1' : '0'); applyAdmin(); if(S.sheetSid) renderSheet(); };
 $('#aSync').onclick = syncCatalog;
@@ -1080,6 +1123,7 @@ $('#sheet').addEventListener('touchend', ev => {
   if(Math.abs(dx) > 60 && Math.abs(dy) < 50) navSheet(dx < 0 ? 1 : -1);
 }, {passive:true});
 document.addEventListener('keydown', ev => {
+  if(!$('#boxes').hidden){ if(ev.key === 'Escape') closeBoxes(); return; }
   if(ev.target.matches('input,select,textarea')) return;
   if($('#ovModal').classList.contains('show')){ if(ev.key === 'Escape') closeModal(); return; }
   if(!S.sheetSid) return;
@@ -1127,6 +1171,79 @@ function evoHtml(sp){
   };
   return `<div class="sec">Évolutions</div><div class="evo">` + stages.map(st => `<div class="evs">${st.map(chip).join('')}</div>`).join('<span class="evarr">→</span>') + `</div>`;
 }
+
+/* ---------- Boîtes HOME : rangement 30 par 30 + impression / PDF ---------- */
+const BOXK = [['fem','Femelles ♀'], ['regional','Régionales'], ['gmax','Gigamax'], ['mega','Méga (case réservée)'], ['alt','Alternatives'], ['cosm','Cosmétiques']];
+let BX = null;
+function bxOpts(){
+  if(BX) return BX;
+  let o = null; try { o = JSON.parse(localStorage.getItem('pdx-box')); } catch(e){}
+  BX = o || {gen:0, one:false, k:{fem:true, regional:!!S.settings.kinds.regional, alt:!!S.settings.kinds.alt, cosm:!!S.settings.kinds.cosm}};
+  if(BX.k.gmax === undefined) BX.k.gmax = true;
+  if(BX.k.mega === undefined) BX.k.mega = true;
+  return BX;
+}
+function bxSave(){ try { localStorage.setItem('pdx-box', JSON.stringify(BX)); } catch(e){} }
+// Ordre : n° Pokédex, puis forme de base (♂ puis ♀), puis les autres formes dans l'ordre du catalogue. Totems exclus ; Méga et Gigamax en option.
+function boxSlots(){
+  const o = bxOpts(), out = [];
+  for(const sp of S.species){
+    if(o.gen && sp.g !== o.gen) continue;
+    if(o.one){ const b = sp.f[0]; out.push({sp, spr:b.spr, n:sp.n, got:sp.f.some(x => (S.prog[x.key] || {}).c)}); continue; }
+    for(const e of sp.f){
+      if(S.ov.hidden[e.key] || e.key.includes('-totem')) continue;
+      if(e.kind !== 'base' && !o.k[e.kind]) continue;
+      const p = S.prog[e.key] || {}, nm = bname(e);
+      if(e.fem && o.k.fem){
+        out.push({sp, spr:e.spr, n:nm, sx:'♂', got:!!(p.m || (p.c && !p.f))});
+        out.push({sp, spr:e.fem, n:nm, sx:'♀', got:!!p.f});
+      } else out.push({sp, spr:e.spr, n:nm, got:!!(p.c || p.m || p.f)});
+    }
+  }
+  return out;
+}
+function openBoxes(){ $('#boxes').hidden = false; document.body.style.overflow = 'hidden'; renderBoxes(); $('#boxes').scrollTop = 0; }
+function closeBoxes(){ $('#boxes').hidden = true; if(!S.sheetSid && !$('#ovModal').classList.contains('show')) document.body.style.overflow = ''; }
+function renderBoxes(){
+  const o = bxOpts(), sl = boxSlots(), got = sl.filter(s => s.got).length, nb = Math.ceil(sl.length / 30);
+  $('#bxBar').innerHTML = `<div class="h1">📦 Boîtes HOME</div>` +
+    `<button class="btn pri" data-bx="print">🖨️ PDF / Imprimer</button><button class="ib" data-bx="close" title="Fermer">✕</button>` +
+    `<div class="bxopt"><select data-bx="gen"><option value="0">Toutes les générations</option>${S.gens.map(g => `<option value="${g}" ${o.gen === g ? 'selected' : ''}>Gen ${g} · ${GEN[g] || ''}</option>`).join('')}</select>` +
+    `<label><input type="checkbox" data-bx="one" ${o.one ? 'checked' : ''}> Une case par espèce</label>` +
+    BOXK.map(([k, l]) => `<label style="${o.one ? 'opacity:.4' : ''}"><input type="checkbox" data-bx="k" data-k="${k}" ${o.k[k] ? 'checked' : ''} ${o.one ? 'disabled' : ''}> ${l}</label>`).join('') + `</div>`;
+  let h = `<div class="bxsum">${sl.length} cases · ${got} déjà rangées · ${sl.length - got} à laisser vides (pointillés) · ${nb} boîte${nb > 1 ? 's' : ''}</div><div class="bxs">`;
+  for(let b = 0; b < nb; b++){
+    const part = sl.slice(b * 30, b * 30 + 30);
+    h += `<div class="box"><h3><span>Boîte ${b + 1}</span><span>#${pad(part[0].sp.i)} → #${pad(part[part.length - 1].sp.i)} · ${part.filter(s => s.got).length}/${part.length}</span></h3><div class="bgrid">`;
+    for(let i = 0; i < 30; i++){
+      const s = part[i];
+      h += s ? `<div class="slot${s.got ? '' : ' miss'}" title="Case ${i + 1} : ${esc(s.n)}${s.sx ? ' ' + s.sx : ''}"><img loading="lazy" crossorigin="anonymous" src="${sprUrl({spr:s.spr}, false)}" data-fb="${artUrl({spr:s.spr}, false)}" onerror="${FB}" alt=""><div class="sx">${pad(s.sp.i)}${s.sx ? ` <b style="font-family:Nunito,sans-serif;font-size:10px;color:${s.sx === '♀' ? '#f472b6' : '#60a5fa'}">${s.sx}</b>` : ''}</div><div class="sn">${esc(s.n)}</div></div>` : `<div class="slot void"></div>`;
+    }
+    h += `</div></div>`;
+  }
+  $('#bxBody').innerHTML = h + `</div>`;
+}
+$('#bxBar').addEventListener('change', ev => {
+  const t = ev.target, o = bxOpts();
+  if(t.dataset.bx === 'gen') o.gen = +t.value;
+  else if(t.dataset.bx === 'one') o.one = t.checked;
+  else if(t.dataset.bx === 'k') o.k[t.dataset.k] = t.checked;
+  else return;
+  bxSave(); renderBoxes();
+});
+$('#bxBar').addEventListener('click', async ev => {
+  const b = ev.target.closest('button[data-bx]'); if(!b) return;
+  if(b.dataset.bx === 'close') return closeBoxes();
+  if(b.dataset.bx === 'print'){
+    // charge toutes les images avant d'ouvrir l'impression (sinon les cases hors écran sortent vides)
+    const imgs = [...document.querySelectorAll('#bxBody img')];
+    imgs.forEach(i => { i.loading = 'eager'; });
+    b.disabled = true; b.textContent = 'Chargement des images…';
+    await Promise.race([Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.addEventListener('load', r, {once:true}); i.addEventListener('error', r, {once:true}); }))), sleep(25000)]);
+    b.disabled = false; b.textContent = '🖨️ PDF / Imprimer';
+    window.print();
+  }
+});
 
 /* ---------- Admin : fiches ---------- */
 async function renameForm(key){
