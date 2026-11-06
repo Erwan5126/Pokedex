@@ -327,7 +327,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.26";
+const APP_V = "1.27";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -1333,7 +1333,8 @@ async function syncCatalog(){
         const f = p.forms[0] ? await jget(p.forms[0].url) : null;
         v.fr = formFr(f, s.n);
         if(f && f.form_order != null) v.fo = f.form_order;
-        if(s.gd && p.sprites && p.sprites.front_female) v.ff = 'female/' + p.id;
+        // ♀ séparé seulement pour les formes régionales (Farfuret de Hisui) : aucune Méga ni Gigamax n'a de différence ♂/♀
+        if(s.gd && kindOf(v.name) === 'regional' && p.sprites && p.sprites.front_female) v.ff = 'female/' + p.id;
       } else if(p.forms.length){
         const fs = await Promise.all(p.forms.map(fr => jget(fr.url)));
         const df = fs.find(f => f && f.is_default) || fs[0];
