@@ -327,7 +327,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.25";
+const APP_V = "1.26";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -608,7 +608,7 @@ function buildCatalog(docs){
     for(let f of sp.f){
       if(f.d === 'fem' || S.byKey[f.k] || (f.d !== 'base' && femRe.test(f.k))) continue;
       if(fe && f.d === 'base') f = {...f, n:String(f.n).replace(/\s*♂$/, '')};
-      const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:null, femKey:null, o:f.o ?? null};
+      const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null};
       s.f.push(e); S.byKey[f.k] = e; own[f.k] = e;
     }
     if(fe && s.f[0]){ s.f[0].fem = fe.s; s.f[0].femKey = fe.k; }
@@ -619,7 +619,7 @@ function buildCatalog(docs){
       let m = cands.map(c => own[c]).find(Boolean);
       if(!m && /-(female|f)$/.test(f.k) && s.f[0]) m = s.f[0];
       if(m && !m.fem){ m.fem = f.s; m.femKey = f.k; if(m.kind !== 'base') m.raw = String(m.raw).replace(/\s*(mâle|male|♂)\s*$/i, '').trim(); }
-      else { const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:null, femKey:null, o:f.o ?? null}; s.f.push(e); S.byKey[f.k] = e; }
+      else { const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null}; s.f.push(e); S.byKey[f.k] = e; }
     }
     if(s.f.length){ S.species.push(s); S.bySid[s.i] = s; }
   }
@@ -1333,6 +1333,7 @@ async function syncCatalog(){
         const f = p.forms[0] ? await jget(p.forms[0].url) : null;
         v.fr = formFr(f, s.n);
         if(f && f.form_order != null) v.fo = f.form_order;
+        if(s.gd && p.sprites && p.sprites.front_female) v.ff = 'female/' + p.id;
       } else if(p.forms.length){
         const fs = await Promise.all(p.forms.map(fr => jget(fr.url)));
         const df = fs.find(f => f && f.is_default) || fs[0];
@@ -1353,6 +1354,7 @@ async function syncCatalog(){
       for(const v of s.v){
         if(v === def || !v.id || seen.has(v.name)) continue; seen.add(v.name);
         const o = {k:v.name, n:v.fr || `${s.n} (${cap(v.name.replace(s.e + '-', ''))})`, d:kindOf(v.name), s:v.id, o:v.fo ?? null};
+        if(v.ff) o.fs = v.ff;
         if(v.t && v.t.join() !== (def.t || []).join()) o.t = v.t;
         f.push(o);
       }
