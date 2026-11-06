@@ -327,7 +327,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.23";
+const APP_V = "1.25";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -608,7 +608,7 @@ function buildCatalog(docs){
     for(let f of sp.f){
       if(f.d === 'fem' || S.byKey[f.k] || (f.d !== 'base' && femRe.test(f.k))) continue;
       if(fe && f.d === 'base') f = {...f, n:String(f.n).replace(/\s*♂$/, '')};
-      const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:null, femKey:null};
+      const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:null, femKey:null, o:f.o ?? null};
       s.f.push(e); S.byKey[f.k] = e; own[f.k] = e;
     }
     if(fe && s.f[0]){ s.f[0].fem = fe.s; s.f[0].femKey = fe.k; }
@@ -619,7 +619,7 @@ function buildCatalog(docs){
       let m = cands.map(c => own[c]).find(Boolean);
       if(!m && /-(female|f)$/.test(f.k) && s.f[0]) m = s.f[0];
       if(m && !m.fem){ m.fem = f.s; m.femKey = f.k; if(m.kind !== 'base') m.raw = String(m.raw).replace(/\s*(mâle|male|♂)\s*$/i, '').trim(); }
-      else { const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:null, femKey:null}; s.f.push(e); S.byKey[f.k] = e; }
+      else { const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:null, femKey:null, o:f.o ?? null}; s.f.push(e); S.byKey[f.k] = e; }
     }
     if(s.f.length){ S.species.push(s); S.bySid[s.i] = s; }
   }
@@ -686,6 +686,12 @@ function renderGens(){
 function buildStatic(){
   $('#fStatus').innerHTML = STATUS.map(([k, l]) => `<button class="chip" data-s="${k}">${l}</button>`).join('');
   $('#fType').innerHTML = '<option value="">Tous les types</option>' + TYPE_FR.map((t, i) => `<option value="${i}">${t}</option>`).join('');
+}
+// Ordre des formes : base / alternatives / cosmétiques (ordre officiel entre elles), puis régionales, puis Méga, puis Gigamax
+const KIND_RANK = {regional:1, mega:2, gmax:3};
+function byOrder(l){
+  return l.map((e, i) => [e, KIND_RANK[e.kind] || 0, e.o ?? 1e6 + i, i])
+    .sort((a, b) => a[1] - b[1] || a[2] - b[2] || a[3] - b[3]).map(x => x[0]);
 }
 const kindForms = (sp, k) => sp.f.filter(e => e.kind === k && !S.ov.hidden[e.key]);
 function renderFilters(){
@@ -1058,7 +1064,7 @@ function renderSheet(){
   const femView = !!S.sheetFem;
   const look = e => (e.fem && femView) ? {spr:e.fem} : e;
   const hero = look(sf);
-  const forms = sp.f.filter(e => e.kind === 'base' || S.adminMode || isTracked(e) || (e.kind === S.view.kind && !S.ov.hidden[e.key]));
+  const forms = byOrder(sp.f.filter(e => e.kind === 'base' || S.adminMode || isTracked(e) || (e.kind === S.view.kind && !S.ov.hidden[e.key])));
   const l = navList(), i = l.indexOf(sp.i);
   let h = `<div class="shead"><button class="ib" data-a="prev" ${i <= 0 ? 'disabled' : ''}>‹</button>` +
     `<div class="px" style="font-size:9px;color:var(--mute);text-align:center">#${pad(sp.i)} · GEN ${sp.g} ${esc((GEN[sp.g] || '').toUpperCase())}</div>` +
@@ -1184,13 +1190,13 @@ function bxOpts(){
   return BX;
 }
 function bxSave(){ try { localStorage.setItem('pdx-box', JSON.stringify(BX)); } catch(e){} }
-// Ordre : n° Pokédex, puis forme de base (♂ puis ♀), puis les autres formes dans l'ordre du catalogue. Totems exclus ; Méga et Gigamax en option.
+// Ordre : n° Pokédex, puis formes de base / alternatives / cosmétiques (ordre officiel), régionales, Méga, Gigamax (♂ puis ♀ pour chacune). Totems exclus ; Méga et Gigamax en option.
 function boxSlots(){
   const o = bxOpts(), out = [];
   for(const sp of S.species){
     if(o.gen && sp.g !== o.gen) continue;
     if(o.one){ const b = sp.f[0]; out.push({sp, spr:b.spr, n:sp.n, got:sp.f.some(x => (S.prog[x.key] || {}).c)}); continue; }
-    for(const e of sp.f){
+    for(const e of byOrder(sp.f)){
       if(S.ov.hidden[e.key] || e.key.includes('-totem')) continue;
       if(e.kind !== 'base' && !o.k[e.kind]) continue;
       const p = S.prog[e.key] || {}, nm = bname(e);
@@ -1326,11 +1332,13 @@ async function syncCatalog(){
       if(!v.d){
         const f = p.forms[0] ? await jget(p.forms[0].url) : null;
         v.fr = formFr(f, s.n);
+        if(f && f.form_order != null) v.fo = f.form_order;
       } else if(p.forms.length){
         const fs = await Promise.all(p.forms.map(fr => jget(fr.url)));
         const df = fs.find(f => f && f.is_default) || fs[0];
         if(df && df.form_name && !/^(male|female)$/.test(df.form_name)) v.bn = formFr(df, s.n);
-        if(p.forms.length > 1) v.cos = fs.filter(f => f && !f.is_default).map(f => ({k:f.name, n:formFr(f, s.n) || `${s.n} (${cap(f.form_name)})`, s:stemOf(f.sprites && f.sprites.front_default)}));
+        if(df && df.form_order != null) v.fo = df.form_order;
+        if(p.forms.length > 1) v.cos = fs.filter(f => f && !f.is_default).map(f => ({k:f.name, n:formFr(f, s.n) || `${s.n} (${cap(f.form_name)})`, s:stemOf(f.sprites && f.sprites.front_default), o:f.form_order}));
       }
     }, (d, n) => P.set('Pokémon et formes', d, n));
 
@@ -1339,16 +1347,16 @@ async function syncCatalog(){
     for(const s of species){
       const def = s.v.find(v => v.d && v.id) || s.v.find(v => v.id); if(!def) continue;
       const bn = def.bn || s.n; // nom de la forme par défaut quand l'espèce n'a pas de forme « normale »
-      const f = [{k:def.name, n:bn, d:'base', s:def.id, t:def.t || []}];
+      const f = [{k:def.name, n:bn, d:'base', s:def.id, t:def.t || [], o:def.fo ?? null}];
       const seen = new Set([def.name]);
       if(s.gd && !s.v.some(v => /-female$/.test(v.name))){ f[0].n = `${bn} ♂`; f.push({k:def.name + '-f', n:`${bn} ♀`, d:'fem', s:'female/' + def.id}); seen.add(def.name + '-f'); }
       for(const v of s.v){
         if(v === def || !v.id || seen.has(v.name)) continue; seen.add(v.name);
-        const o = {k:v.name, n:v.fr || `${s.n} (${cap(v.name.replace(s.e + '-', ''))})`, d:kindOf(v.name), s:v.id};
+        const o = {k:v.name, n:v.fr || `${s.n} (${cap(v.name.replace(s.e + '-', ''))})`, d:kindOf(v.name), s:v.id, o:v.fo ?? null};
         if(v.t && v.t.join() !== (def.t || []).join()) o.t = v.t;
         f.push(o);
       }
-      for(const c of (def.cos || [])){ if(seen.has(c.k)) continue; seen.add(c.k); f.push({k:c.k, n:c.n, d:'cosm', s:c.s || def.id}); }
+      for(const c of (def.cos || [])){ if(seen.has(c.k)) continue; seen.add(c.k); f.push({k:c.k, n:c.n, d:'cosm', s:c.s || def.id, o:c.o ?? null}); }
       (gens[s.g] = gens[s.g] || []).push({i:s.i, n:s.n, e:s.e, g:s.g, f});
       entries += f.length;
     }
