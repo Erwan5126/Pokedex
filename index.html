@@ -72,7 +72,9 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;background:transparent;border:1px solid var(--line);border-radius:99px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--mute)}
 .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.count{color:var(--mute);font-size:12px;font-weight:700;margin:10px 0}
+.count{color:var(--mute);font-size:12px;font-weight:700;margin:10px 0;flex:1 1 auto}
+.countrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#bulk{padding:6px 8px;font-size:12px;border-radius:10px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
 .card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 6px 10px;text-align:center;cursor:pointer;transition:transform .12s;user-select:none;-webkit-user-select:none}
 .card:active{transform:scale(.97)}
@@ -232,7 +234,13 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
       <select id="fKind"></select>
     </div>
     <div class="chips" id="fStatus"></div>
-    <div class="count" id="count"></div>
+    <div class="countrow"><div class="count" id="count"></div>
+      <select id="bulk" title="Appliquer à tous les Pokémon affichés">
+        <option value="">Actions sur les Pokémon affichés…</option>
+        <option value="base">✓ Cocher la forme affichée (♂ et ♀)</option>
+        <option value="all">✓ Cocher toutes les formes suivies</option>
+        <option value="none">✕ Tout décocher</option>
+      </select></div>
     <div class="avbar" id="avbar"></div>
     <div class="grid" id="grid"></div>
     <div class="empty" id="empty" hidden></div>
@@ -258,7 +266,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.11";
+const APP_V = "1.12";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -761,6 +769,36 @@ function setSex(key, sx){
     .catch(err => { console.error(err); toast('Erreur de sauvegarde'); });
   refreshCard(key);
 }
+async function bulkCapture(mode){
+  const list = S.lastVisible; if(!list.length) return;
+  const label = {base:'Cocher la forme affichée des', all:'Cocher toutes les formes suivies des', none:'Tout décocher pour les'}[mode];
+  if(!confirm(`${label} ${list.length} Pokémon affichés ?` + (mode === 'none' ? '\nShiny, IV, HOME et jeu de capture seront aussi effacés.' : '\nTu pourras ensuite décocher ceux qui te manquent.'))) return;
+  const ups = [];
+  for(const sp of list){
+    let targets;
+    if(mode === 'all' || mode === 'none') targets = S.view.kind ? spEntries(sp) : sp.f.filter(isTracked);
+    else targets = [S.view.kind && spEntries(sp)[0] ? spEntries(sp)[0] : sp.f[0]];
+    for(const e of targets){
+      const old = S.prog[e.key];
+      let nv;
+      if(mode === 'none') nv = null;
+      else { nv = {...(old || {}), c:1}; if(e.fem){ nv.m = 1; nv.f = 1; } }
+      if(JSON.stringify(old || null) === JSON.stringify(nv)) continue;
+      if(nv) S.prog[e.key] = nv; else delete S.prog[e.key];
+      ups.push([e.key, nv]);
+    }
+  }
+  renderAll();
+  try {
+    for(let i = 0; i < ups.length; i += 300){
+      const args = [];
+      for(const [k, v] of ups.slice(i, i + 300)) args.push(new FieldPath('p', k), v ? v : deleteField());
+      await updateDoc(uref(), ...args);
+    }
+    toast(`${ups.length} forme${ups.length > 1 ? 's' : ''} mise${ups.length > 1 ? 's' : ''} à jour`);
+  } catch(e){ console.error(e); toast('Erreur de sauvegarde'); }
+}
+$('#bulk').addEventListener('change', ev => { const m = ev.target.value; ev.target.value = ''; if(m) bulkCapture(m); });
 function saveSettings(){ updateDoc(uref(), {settings:S.settings}).catch(() => toast('Erreur de sauvegarde')); }
 
 /* ---------- Événements principaux ---------- */
