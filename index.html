@@ -268,7 +268,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.16";
+const APP_V = "1.17";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -965,7 +965,7 @@ function renderSheet(){
     const tag = parts.length ? `<div class="fk${na ? ' na' : ''}">${parts.join(' · ')}</div>` : '';
     const le = look(e), gendered = !!e.fem;
     h += `<div class="frow ${hid || off ? 'hid' : ''}${na ? ' na' : ''}${e === sf ? ' sel' : ''}" data-a="sel" data-k="${esc(e.key)}"><div class="ftop"><img crossorigin="anonymous" src="${sprUrl(le, sh)}" data-fb="${artUrl(le, sh)}" onerror="${FB}" alt=""><div class="fname">${esc(e === base ? sp.n : ename(e))}${gendered ? ' <span class="mute sm">♂ ♀</span>' : ''}${tag}</div>` +
-      (S.adminMode && e.kind !== 'base' ? `<button class="btn sm" data-a="ren" data-k="${esc(e.key)}">✎</button><button class="btn sm" data-a="hide" data-k="${esc(e.key)}">${hid ? 'Afficher' : 'Masquer'}</button>` : '') +
+      (S.adminMode ? `<button class="btn sm" data-a="ren" data-k="${esc(e.key)}">✎</button>` + (e.kind !== 'base' ? `<button class="btn sm" data-a="hide" data-k="${esc(e.key)}">${hid ? 'Afficher' : 'Masquer'}</button>` : '') : '') +
       `</div><div class="tg">${gendered ? `<button class="t t-m ${p.m ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="m">✓ ♂</button><button class="t t-f ${p.f ? 'on' : ''}" data-a="sx" data-k="${esc(e.key)}" data-f="f">✓ ♀</button>` : tbtn(e, p, 'c', '✓ Capturé')}${tbtn(e, p, 's', '✨ Shiny')}${tbtn(e, p, 'iv', 'IV 100%')}` +
       `<select class="gsel" data-k="${esc(e.key)}"><option value="">Jeu de capture…</option>${S.games.map(g => `<option value="${g.id}" ${p.g === g.id ? 'selected' : ''}>${esc(g.a)} — ${esc(g.n)}</option>`).join('')}</select></div></div>`;
   }
@@ -1095,9 +1095,11 @@ async function syncCatalog(){
       if(!v.d){
         const f = p.forms[0] ? await jget(p.forms[0].url) : null;
         v.fr = formFr(f, s.n);
-      } else if(p.forms.length > 1){
+      } else if(p.forms.length){
         const fs = await Promise.all(p.forms.map(fr => jget(fr.url)));
-        v.cos = fs.filter(f => f && !f.is_default).map(f => ({k:f.name, n:formFr(f, s.n) || `${s.n} (${cap(f.form_name)})`, s:stemOf(f.sprites && f.sprites.front_default)}));
+        const df = fs.find(f => f && f.is_default) || fs[0];
+        if(df && df.form_name && !/^(male|female)$/.test(df.form_name)) v.bn = formFr(df, s.n);
+        if(p.forms.length > 1) v.cos = fs.filter(f => f && !f.is_default).map(f => ({k:f.name, n:formFr(f, s.n) || `${s.n} (${cap(f.form_name)})`, s:stemOf(f.sprites && f.sprites.front_default)}));
       }
     }, (d, n) => P.set('Pokémon et formes', d, n));
 
@@ -1105,9 +1107,10 @@ async function syncCatalog(){
     const gens = {}; let entries = 0;
     for(const s of species){
       const def = s.v.find(v => v.d && v.id) || s.v.find(v => v.id); if(!def) continue;
-      const f = [{k:def.name, n:s.n, d:'base', s:def.id, t:def.t || []}];
+      const bn = def.bn || s.n; // nom de la forme par défaut quand l'espèce n'a pas de forme « normale »
+      const f = [{k:def.name, n:bn, d:'base', s:def.id, t:def.t || []}];
       const seen = new Set([def.name]);
-      if(s.gd && !s.v.some(v => /-female$/.test(v.name))){ f[0].n = `${s.n} ♂`; f.push({k:def.name + '-f', n:`${s.n} ♀`, d:'fem', s:'female/' + def.id}); seen.add(def.name + '-f'); }
+      if(s.gd && !s.v.some(v => /-female$/.test(v.name))){ f[0].n = `${bn} ♂`; f.push({k:def.name + '-f', n:`${bn} ♀`, d:'fem', s:'female/' + def.id}); seen.add(def.name + '-f'); }
       for(const v of s.v){
         if(v === def || !v.id || seen.has(v.name)) continue; seen.add(v.name);
         const o = {k:v.name, n:v.fr || `${s.n} (${cap(v.name.replace(s.e + '-', ''))})`, d:kindOf(v.name), s:v.id};
