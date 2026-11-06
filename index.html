@@ -268,7 +268,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.15";
+const APP_V = "1.16";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -288,7 +288,7 @@ const TYPES = ['normal','fighting','flying','poison','ground','rock','bug','ghos
 const TYPE_FR = ['Normal','Combat','Vol','Poison','Sol','Roche','Insecte','Spectre','Acier','Feu','Eau','Plante','Électrik','Psy','Glace','Dragon','Ténèbres','Fée'];
 const TYPE_C = ['#9fa19f','#ff8000','#81b9ef','#9141cb','#915121','#afa981','#91a119','#704170','#60a1b8','#e62829','#2980ef','#3fa129','#e0ad00','#ef4179','#3dcef3','#5060e1','#624d4e','#ef70ef'];
 const STATUS = [['all','Tous'],['miss','Manquants'],['part','Incomplets'],['c','Capturés'],['full','Complets ★'],['nos','Shiny manquants'],['s','Shiny'],['noiv','IV manquants']];
-const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true};
+const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true,carousel:true};
 const SW = 'sword-shield,the-isle-of-armor,the-crown-tundra', SV = 'scarlet-violet,the-teal-mask,the-indigo-disk';
 const DEFAULT_GAMES = [
   {id:'rouge',n:'Rouge',a:'R',c:'#e3350d',gen:1,vg:'red-blue'},
@@ -707,25 +707,47 @@ function cardHtml(sp){
 }
 let carStep = 0;
 const calm = matchMedia('(prefers-reduced-motion: reduce)');
+const carOn = () => S.settings.carousel !== false;
+function showFrame(card, idx, instant){
+  let fr; try { fr = JSON.parse(card.dataset.fr); } catch(e){ return; }
+  if(!fr || fr.length < 2) return;
+  const [spr, got, label] = fr[idx % fr.length], img = card.querySelector('img'), lab = card.querySelector('.fn');
+  if(!img) return;
+  const swap = () => {
+    img.setAttribute('onerror', FB); img.style.visibility = '';
+    img.dataset.fb = artUrl({spr}, false); img.src = sprUrl({spr}, false);
+    img.classList.toggle('miss', !got);
+    if(lab) lab.textContent = label;
+    img.classList.remove('fade');
+  };
+  if(instant) return swap();
+  img.classList.add('fade'); setTimeout(swap, 220);
+}
+// Défilement automatique de toutes les cartes (réglage activé)
 function carouselTick(){
-  if(document.hidden || calm.matches) return;
+  if(document.hidden || calm.matches || !carOn()) return;
   carStep++;
-  document.querySelectorAll('#grid .card[data-fr]').forEach(card => {
-    let fr; try { fr = JSON.parse(card.dataset.fr); } catch(e){ return; }
-    if(fr.length < 2) return;
-    const [spr, got, label] = fr[carStep % fr.length], img = card.querySelector('img'), lab = card.querySelector('.fn');
-    if(!img) return;
-    img.classList.add('fade');
-    setTimeout(() => {
-      img.setAttribute('onerror', FB); img.style.visibility = '';
-      img.dataset.fb = artUrl({spr}, false); img.src = sprUrl({spr}, false);
-      img.classList.toggle('miss', !got);
-      if(lab) lab.textContent = label;
-      img.classList.remove('fade');
-    }, 220);
-  });
+  document.querySelectorAll('#grid .card[data-fr]').forEach(card => showFrame(card, carStep));
 }
 setInterval(carouselTick, 2600);
+// Réglage désactivé : la carte survolée fait défiler ses formes, puis revient à la première
+let hovCard = null, hovT = 0, hovStep = 0;
+function stopHover(){
+  clearInterval(hovT); hovT = 0;
+  if(hovCard && hovCard.isConnected) showFrame(hovCard, 0, true);
+  hovCard = null;
+}
+$('#grid').addEventListener('mouseover', ev => {
+  if(carOn()) return;
+  const card = ev.target.closest('.card[data-fr]');
+  if(card === hovCard) return;
+  stopHover();
+  if(!card) return;
+  hovCard = card; hovStep = 0;
+  const next = () => { if(!hovCard || !hovCard.isConnected) return stopHover(); showFrame(hovCard, ++hovStep); };
+  next(); hovT = setInterval(next, 1200);
+});
+$('#grid').addEventListener('mouseleave', stopHover);
 function formCardHtml(e, gid){
   return `<div class="card${formAvail(gid, e) ? ' avon' : ''}" data-k="${esc(e.key)}">` +
     `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(e, false)}" data-fb="${artUrl(e, false)}" onerror="${FB}" alt="">` +
@@ -1203,6 +1225,7 @@ $('#ovModal').addEventListener('click', ev => {
   if(acts[a]) acts[a]();
 });
 $('#ovModal').addEventListener('change', ev => {
+  if(ev.target.dataset.set === 'carousel'){ S.settings.carousel = ev.target.checked; saveSettings(); renderGrid(); return; }
   const k = ev.target.dataset.kind; if(!k) return;
   S.settings.kinds[k] = ev.target.checked; saveSettings(); renderAll();
 });
@@ -1278,6 +1301,7 @@ function renderSettings(){
   let h = mhead('Réglages');
   h += `<div class="sec">Compte</div><div class="grow"><div style="flex:1"><b>${esc(u.displayName || u.email || 'Invité')}</b><div class="mute sm">${type}${S.isAdmin ? ' · administrateur' : ''}</div></div><button class="btn sm dan" data-a="logout">Se déconnecter</button></div>`;
   h += `<div class="grow"><span class="mute sm" style="font-weight:700">UID</span><span class="code">${esc(u.uid)}</span><button class="btn sm" data-a="uid">Copier</button></div>`;
+  h += `<div class="sec">Affichage</div><label class="chk"><input type="checkbox" data-set="carousel" ${S.settings.carousel !== false ? 'checked' : ''}> Faire défiler les formes sur les cartes <span class="mute sm" style="margin-left:auto">sinon au survol</span></label>`;
   h += `<div class="sec">Formes suivies</div><p class="mute sm" style="margin-top:0;font-weight:600">Les formes cochées apparaissent dans les fiches et comptent dans tes statistiques et dans le compteur de formes des cartes.</p>`;
   for(const k of ['regional','mega','gmax','alt','cosm']){
     const n = Object.values(S.byKey).filter(e => e.kind === k && !S.ov.hidden[e.key]).length;
