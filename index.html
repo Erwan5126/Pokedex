@@ -79,7 +79,9 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .card img{width:80px;height:80px;object-fit:contain;image-rendering:pixelated;opacity:.35;filter:grayscale(1)}
 .card.got img{opacity:1;filter:none}
 .card .fp{position:absolute;top:8px;left:8px;font-size:9.5px;font-weight:800;color:var(--mute);background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:2px 5px}
-.card.full .fp{color:#06291b;background:var(--green);border-color:var(--green)}
+.card.full .fp{color:#3a2a00;background:var(--gold);border-color:var(--gold)}
+.card.got.full{background:linear-gradient(180deg,#3a3013,var(--card));border-color:rgba(255,209,102,.7);box-shadow:0 0 14px rgba(255,209,102,.18)}
+.card.got.full .qc{background:var(--gold);border-color:var(--gold);color:#3a2a00}
 .card.got{background:linear-gradient(180deg,#1d2a5e,var(--card));border-color:rgba(61,220,151,.35)}
 .card.sh{border-color:rgba(255,209,102,.65);box-shadow:0 0 0 1px rgba(255,209,102,.25) inset}
 .num{font-size:9px;color:var(--mute);font-family:'Press Start 2P',monospace}
@@ -256,7 +258,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.10";
+const APP_V = "1.11";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -555,15 +557,23 @@ function tracked(filter){
   for(const sp of S.species){ if(filter && !filter(sp)) continue; for(const e of sp.f) if(isTracked(e)) out.push(e); }
   return out;
 }
+// Unités à capturer : 1 par forme, 2 pour une forme avec ♂/♀ (capturé sans sexe précisé = 1 sur 2)
+function unitsOf(e){
+  const p = S.prog[e.key] || {};
+  if(!e.fem) return {n:1, c:p.c ? 1 : 0};
+  const c = (p.m ? 1 : 0) + (p.f ? 1 : 0);
+  return {n:2, c:c || (p.c ? 1 : 0)};
+}
+function spUnits(l){ let n = 0, c = 0; for(const e of l){ const u = unitsOf(e); n += u.n; c += u.c; } return {n, c}; }
 function spTally(filter){
   let n = 0, any = 0, all = 0;
   for(const sp of S.species){
     if(filter && !filter(sp)) continue;
     n++;
     const l = sp.f.filter(isTracked);
-    const c = l.filter(e => (S.prog[e.key] || {}).c).length;
-    if(c) any++;
-    if(c && c === l.length) all++;
+    const u = spUnits(l);
+    if(u.c) any++;
+    if(u.c && u.c === u.n) all++;
   }
   return {n, any, all};
 }
@@ -622,7 +632,7 @@ function statusOk(sp){
   const some = f => l.some(e => !(S.prog[e.key] || {})[f]);
   const any = f => l.some(e => (S.prog[e.key] || {})[f]);
   switch(S.view.status){
-    case 'miss': return some('c');
+    case 'miss': { const u = spUnits(l); return u.c < u.n; }
     case 'c': return any('c');
     case 'nos': return some('s');
     case 's': return any('s');
@@ -655,9 +665,9 @@ function cardHtml(sp){
   const pb = S.prog[base.key] || {};
   let c = 0, s = 0, iv = 0, hm = 0;
   for(const e of l){ const p = S.prog[e.key] || {}; if(p.c) c++; if(p.s) s++; if(p.iv) iv++; if(p.h) hm++; }
-  const g = pb.g && gameById(pb.g);
-  return `<div class="card${c ? ' got' : ''}${s ? ' sh' : ''}${l.length > 1 && c === l.length ? ' full' : ''}" data-s="${sp.i}">` +
-    (l.length > 1 ? `<span class="fp" title="Formes capturées">${c}/${l.length}</span>` : '') +
+  const g = pb.g && gameById(pb.g), u = spUnits(l);
+  return `<div class="card${c ? ' got' : ''}${s ? ' sh' : ''}${u.n && u.c === u.n ? ' full' : ''}" data-s="${sp.i}">` +
+    (u.n > 1 ? `<span class="fp" title="Formes capturées (♂ et ♀ comptent séparément)">${u.c}/${u.n}</span>` : '') +
     `<button class="qc" aria-label="Capturé">✓</button>` +
     `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(base, false)}" data-fb="${artUrl(base, false)}" onerror="${FB}" alt="">` +
     `<div class="num">#${pad(sp.i)}</div><div class="nm">${esc(S.view.kind && l.length === 1 ? ename(l[0]) : sp.n)}</div>` +
