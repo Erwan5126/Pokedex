@@ -78,8 +78,10 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
 .card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 6px 10px;text-align:center;cursor:pointer;transition:transform .12s;user-select:none;-webkit-user-select:none}
 .card:active{transform:scale(.97)}
-.card img{width:80px;height:80px;object-fit:contain;image-rendering:pixelated;opacity:.35;filter:grayscale(1)}
-.card.got img{opacity:1;filter:none}
+.card img{width:80px;height:80px;object-fit:contain;image-rendering:pixelated;transition:opacity .22s}
+.card img.miss{opacity:.35;filter:grayscale(1)}
+.card img.fade{opacity:0!important}
+.card .fn{font-size:9.5px;font-weight:700;color:var(--mute);margin-top:2px;line-height:1.2;min-height:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card .fp{position:absolute;top:8px;left:8px;font-size:9.5px;font-weight:800;color:var(--mute);background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:2px 5px}
 .card.full .fp{color:#3a2a00;background:var(--gold);border-color:var(--gold)}
 .card.got.full{background:linear-gradient(180deg,#3a3013,var(--card));border-color:rgba(255,209,102,.7);box-shadow:0 0 14px rgba(255,209,102,.18)}
@@ -266,7 +268,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.14";
+const APP_V = "1.15";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -669,20 +671,61 @@ function visibleSpecies(){
   }
   return out;
 }
+// Images affichées par la carte : formes retenues par les filtres (type de forme, jeu, statut), ♂ et ♀ séparés
+function cardFrames(sp){
+  const l = spEntries(sp), fr = [];
+  for(const e of (l.length ? l : [sp.f[0]])){
+    const p = S.prog[e.key] || {};
+    if(e.fem){
+      const nm = ename(e).replace(/\s*[♂♀]\s*$/, '');
+      fr.push({spr:e.spr, label:nm + ' ♂', got:!!(p.m || (p.c && !p.f)), s:!!p.s, iv:!!p.iv});
+      fr.push({spr:e.fem, label:nm + ' ♀', got:!!p.f, s:!!p.s, iv:!!p.iv});
+    } else fr.push({spr:e.spr, label:ename(e), got:!!p.c, s:!!p.s, iv:!!p.iv});
+  }
+  const keep = {miss:f => !f.got, part:f => !f.got, c:f => f.got, full:f => f.got, nos:f => !f.s, s:f => f.s, noiv:f => !f.iv}[S.view.status];
+  const k = keep ? fr.filter(keep) : fr;
+  return k.length ? k : fr;
+}
 function cardHtml(sp){
   const l = spEntries(sp), base = S.view.kind && l[0] ? l[0] : sp.f[0];
+  const fr = cardFrames(sp), f0 = fr[0];
   const pb = S.prog[base.key] || {};
   let c = 0, s = 0, iv = 0, hm = 0;
   for(const e of l){ const p = S.prog[e.key] || {}; if(p.c) c++; if(p.s) s++; if(p.iv) iv++; if(p.h) hm++; }
   const g = pb.g && gameById(pb.g), u = spUnits(l);
-  return `<div class="card${c ? ' got' : ''}${s ? ' sh' : ''}${u.n && u.c === u.n ? ' full' : ''}" data-s="${sp.i}">` +
+  const shown = S.view.kind && l.length === 1 ? ename(l[0]) : sp.n;
+  const lab = fr.length > 1 || f0.label !== shown ? f0.label : '';
+  const data = fr.length > 1 ? ` data-fr="${esc(JSON.stringify(fr.map(f => [f.spr, f.got ? 1 : 0, f.label])))}"` : '';
+  return `<div class="card${c ? ' got' : ''}${s ? ' sh' : ''}${u.n && u.c === u.n ? ' full' : ''}" data-s="${sp.i}"${data}>` +
     (u.n > 1 ? `<span class="fp" title="Formes capturées (♂ et ♀ comptent séparément)">${u.c}/${u.n}</span>` : '') +
     `<button class="qc" aria-label="Capturé">✓</button>` +
-    `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(base, false)}" data-fb="${artUrl(base, false)}" onerror="${FB}" alt="">` +
-    `<div class="num">#${pad(sp.i)}</div><div class="nm">${esc(S.view.kind && l.length === 1 ? ename(l[0]) : sp.n)}</div>` +
+    `<img loading="lazy" crossorigin="anonymous" class="${f0.got ? '' : 'miss'}" src="${sprUrl(f0, false)}" data-fb="${artUrl(f0, false)}" onerror="${FB}" alt="">` +
+    `<div class="num">#${pad(sp.i)}</div><div class="nm">${esc(shown)}</div>` +
+    (lab ? `<div class="fn">${esc(lab)}</div>` : '') +
     (S.view.kind ? `<div class="fk">${KINDS[S.view.kind]}${l.length > 1 ? ' ×' + l.length : ''}</div>` : '') +
     `<div class="bd">${s ? `<span class="s">✨${s > 1 ? s : ''}</span>` : ''}${iv ? '<span class="iv">IV</span>' : ''}${g ? `<span>${esc(g.a)}</span>` : ''}</div></div>`;
 }
+let carStep = 0;
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
+function carouselTick(){
+  if(document.hidden || calm.matches) return;
+  carStep++;
+  document.querySelectorAll('#grid .card[data-fr]').forEach(card => {
+    let fr; try { fr = JSON.parse(card.dataset.fr); } catch(e){ return; }
+    if(fr.length < 2) return;
+    const [spr, got, label] = fr[carStep % fr.length], img = card.querySelector('img'), lab = card.querySelector('.fn');
+    if(!img) return;
+    img.classList.add('fade');
+    setTimeout(() => {
+      img.setAttribute('onerror', FB); img.style.visibility = '';
+      img.dataset.fb = artUrl({spr}, false); img.src = sprUrl({spr}, false);
+      img.classList.toggle('miss', !got);
+      if(lab) lab.textContent = label;
+      img.classList.remove('fade');
+    }, 220);
+  });
+}
+setInterval(carouselTick, 2600);
 function formCardHtml(e, gid){
   return `<div class="card${formAvail(gid, e) ? ' avon' : ''}" data-k="${esc(e.key)}">` +
     `<img loading="lazy" crossorigin="anonymous" src="${sprUrl(e, false)}" data-fb="${artUrl(e, false)}" onerror="${FB}" alt="">` +
