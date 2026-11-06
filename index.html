@@ -355,7 +355,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.29";
+const APP_V = "1.30";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -483,7 +483,7 @@ function regionOf(name){
   return (String(name).match(regRe) || [])[1] || null;
 }
 function formDefault(g, e){
-  if(!g || e.nw) return false; // forme nouvelle (ajoutée après coup à une espèce) : non affectée par défaut
+  if(!g || e.nw || g.man) return false; // forme nouvelle, ou jeu ajouté à la main : rien n'est dispo par défaut
   const known = KNOWN_G.has(g.id), gen = g.gen || 0;
   switch(e.kind){
     case 'base': return true;
@@ -1602,18 +1602,13 @@ $('#ovModal').addEventListener('click', ev => {
     },
     gsave: saveGameForm,
     gdup: async () => {
-      const g = S.games[i], n = prompt('Nom du nouveau jeu (la dispo sera copiée) :', g.n + ' (copie)');
+      const g = S.games[i], n = prompt('Nom du nouveau jeu (couleur, génération et groupe de versions repris, dispo vide) :', g.n + ' (copie)');
       if(!n) return;
       const a = prompt('Abréviation :', g.a) || g.a;
-      const ng = {...g, id:'g' + Date.now().toString(36), n:n.trim(), a:a.trim()};
+      const ng = {...g, id:'g' + Date.now().toString(36), n:n.trim(), a:a.trim(), man:true};
       const l = [...S.games]; l.splice(i + 1, 0, ng);
       await saveGames(l);
-      const src = S.avail[g.id], sf = S.availF[g.id];
-      if(src && src.size) await setDoc(doc(db, 'config', 'avail'), {
-        [ng.id]:[...src].sort((x, y) => x - y),
-        ['F_' + ng.id]:{i:[...(sf ? sf.i : [])], x:[...(sf ? sf.x : [])]}
-      }, {merge:true});
-      toast(`« ${ng.n} » créé${src && src.size ? ' avec ' + src.size + ' Pokémon dispo' : ''}`);
+      toast(`« ${ng.n} » créé, dispo à remplir avec « ✏️ Éditer la dispo »`);
     },
     gimp: async () => {
       const g = S.games[i]; b.disabled = true; b.textContent = '…';
@@ -1654,13 +1649,12 @@ async function saveGames(list){ await setDoc(doc(db, 'config', 'games'), {list})
 function openGames(){ S.editGame = null; openModal(renderGames); }
 function renderGames(){
   if(!$('#ovModal').classList.contains('show') && S.modalRender !== renderGames) return;
-  let h = mhead('Gérer les jeux') + `<p class="mute sm" style="font-weight:600">Le champ PokéAPI liste les version-groups (séparés par des virgules) utilisés pour importer automatiquement la disponibilité depuis les Pokédex régionaux. Pour distinguer les versions (ex. Rouge et Bleu), importe la dispo du jeu groupé, duplique-le avec ⧉, puis retire les exclusivités avec « ✏️ Éditer la dispo » dans la barre admin.</p>`;
+  let h = mhead('Gérer les jeux') + `<p class="mute sm" style="font-weight:600">Un nouveau jeu démarre vide : sa disponibilité se remplit à la main, forme par forme, avec « ✏️ Éditer la dispo » dans la barre admin. Le groupe de versions sert seulement à jumeler les versions (ex. Écarlate et Violet) pour le filtre et les exclusivités.</p>`;
   if(!S.games.length) h += `<button class="btn pri" data-a="gdef">Initialiser avec la liste par défaut</button>`;
-  else if(!S.games.some(g => g.id === 'rouge')) h += `<div class="grow" style="border-color:var(--accent)"><div style="flex:1 1 200px"><b>Séparer les versions</b><div class="mute sm">Remplace la liste par une ligne par version (Rouge, Bleu, Jaune…) et réimporte les dispos.</div></div><button class="btn pri" data-a="gsplit">Séparer les versions</button></div>`;
   S.games.forEach((g, i) => {
-    h += `<div class="grow"><span class="dot" style="background:${g.c}"></span><div style="flex:1 1 160px;min-width:0"><b>${esc(g.n)}</b> <span class="mute sm">${esc(g.a)} · ${g.gen ? 'Gen ' + g.gen : 'hors gen'} · ${(S.avail[g.id] && S.avail[g.id].size) || 0} dispo</span><div class="mute sm">${esc(g.vg || '—')}</div></div>` +
+    h += `<div class="grow"><span class="dot" style="background:${g.c}"></span><div style="flex:1 1 160px;min-width:0"><b>${esc(g.n)}</b> <span class="mute sm">${esc(g.a)} · ${g.gen ? 'Gen ' + g.gen : 'hors gen'} · ${(S.avail[g.id] && S.avail[g.id].size) || 0} dispo</span><div class="mute sm">${g.vg ? 'Groupe : ' + esc(g.vg) : 'Sans version jumelle'}${g.man ? ' · dispo 100 % manuelle' : ''}</div></div>` +
       `<button class="btn sm" data-a="gup" data-i="${i}">↑</button><button class="btn sm" data-a="gdn" data-i="${i}">↓</button>` +
-      `<button class="btn sm" data-a="gimp" data-i="${i}" ${g.vg ? '' : 'disabled'}>⇩ Dispo</button><button class="btn sm" data-a="gdup" data-i="${i}" title="Dupliquer">⧉</button><button class="btn sm" data-a="ged" data-i="${i}">✎</button><button class="btn sm dan" data-a="gdel" data-i="${i}">🗑</button></div>`;
+      `<button class="btn sm" data-a="gdup" data-i="${i}" title="Dupliquer (sans la dispo)">⧉</button><button class="btn sm" data-a="ged" data-i="${i}">✎</button><button class="btn sm dan" data-a="gdel" data-i="${i}">🗑</button></div>`;
   });
   const e = S.editGame || {};
   h += `<div class="sec">${e.id ? 'Modifier « ' + esc(e.n) + ' »' : 'Ajouter un jeu'}</div><div class="gform">` +
@@ -1668,15 +1662,15 @@ function renderGames(){
     `<input class="inp" id="gA" placeholder="Abréviation (EV)" value="${esc(e.a || '')}">` +
     `<input class="inp" id="gG" type="number" min="0" max="20" placeholder="Génération" value="${e.gen ?? ''}">` +
     `<input class="inp" id="gC" type="color" value="${e.c || '#7c5cff'}">` +
-    `<input class="inp" id="gV" placeholder="PokéAPI : scarlet-violet,the-teal-mask" value="${esc(e.vg || '')}">` +
+    `<input class="inp" id="gV" placeholder="Groupe de versions (même texte pour deux versions jumelles, ex : scarlet-violet)" value="${esc(e.vg || '')}">` +
     `<div class="full" style="display:flex;gap:6px"><button class="btn pri" data-a="gsave">Enregistrer</button>${e.id ? '<button class="btn" data-a="gcancel">Annuler</button>' : ''}</div></div>`;
-  if(S.games.some(g => g.vg)) h += `<div class="sec">Import groupé</div><button class="btn" data-a="gimpall">⇩ Importer la dispo de tous les jeux</button>`;
   $('#modal').innerHTML = h;
 }
 function saveGameForm(){
   const n = $('#gN').value.trim(), a = $('#gA').value.trim();
   if(!n || !a) return toast('Nom et abréviation requis');
-  const g = {id:(S.editGame && S.editGame.id) || ('g' + Date.now().toString(36)), n, a, c:$('#gC').value, gen:+$('#gG').value || 0, vg:$('#gV').value.trim()};
+  const old = S.editGame && S.games.find(x => x.id === S.editGame.id);
+  const g = {id:(S.editGame && S.editGame.id) || ('g' + Date.now().toString(36)), n, a, c:$('#gC').value, gen:+$('#gG').value || 0, vg:$('#gV').value.trim(), man:old ? !!old.man : true};
   const l = [...S.games]; const i = l.findIndex(x => x.id === g.id);
   if(i >= 0) l[i] = g; else l.push(g);
   saveGames(l); toast(i >= 0 ? 'Jeu modifié' : 'Jeu ajouté');
