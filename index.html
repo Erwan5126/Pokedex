@@ -104,6 +104,15 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .avbar.show{display:flex}
 .avbar .chips{flex-basis:100%}
 .avbar .chip{padding:5px 10px}
+.evo{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.evs{display:flex;flex-wrap:wrap;gap:6px}
+.evarr{color:var(--mute);font-weight:800;font-size:16px}
+.ev{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 8px 6px;display:flex;flex-direction:column;align-items:center;min-width:72px;font-size:11px;font-weight:800}
+.ev img{width:48px;height:48px;object-fit:contain;image-rendering:pixelated}
+.ev.miss img{opacity:.35;filter:grayscale(1)}
+.ev.got{border-color:rgba(61,220,151,.45)}
+.ev.full{border-color:rgba(255,209,102,.6)}
+.ev.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
 .frow.na{opacity:.38;filter:grayscale(.85)}
 .fk.na{color:var(--mute)}
 .empty{text-align:center;padding:60px 20px;color:var(--mute);font-weight:700}
@@ -147,6 +156,8 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
 .gchips{display:flex;gap:6px;flex-wrap:wrap}
 .gchip{border:1px solid var(--gc,var(--line));background:transparent;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:800;opacity:.35}
 .gchip.on{opacity:1;background:color-mix(in srgb,var(--gc) 28%,transparent)}
+.gchip.ex{border-style:dashed}
+.gchip small{font-size:9px;opacity:.85;margin-left:3px}
 .gchip:disabled{cursor:default}
 .gchip.on:disabled{opacity:1}
 .grow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:6px}
@@ -232,8 +243,14 @@ select,.inp{background:var(--card);border:1px solid var(--line);border-radius:12
     <div class="tools">
       <input class="search" id="q" type="search" placeholder="Nom (FR / EN) ou numéro…" autocomplete="off">
       <select id="fGame"></select>
+      <button class="chip" id="fExcl" hidden title="Formes dispo dans ce jeu mais pas dans sa version jumelle">Exclusifs</button>
       <select id="fType"></select>
       <select id="fKind"></select>
+      <select id="fSort" title="Ordre d'affichage">
+        <option value="num">Trier : n° Pokédex</option>
+        <option value="name">Trier : nom</option>
+        <option value="prog">Trier : presque complets d'abord</option>
+      </select>
     </div>
     <div class="chips" id="fStatus"></div>
     <div class="countrow"><div class="count" id="count"></div>
@@ -268,7 +285,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.18";
+const APP_V = "1.20";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -365,7 +382,7 @@ const S = {
   species:[], gens:[], byKey:{}, bySid:{},
   games:[], avail:{}, availF:{}, ov:{hidden:{}, names:{}},
   prog:{}, settings:structuredClone(DEF_SET),
-  view:{gen:0, q:'', status:'all', game:'', type:'', kind:''},
+  view:{gen:0, q:'', status:'all', game:'', type:'', kind:'', excl:false, sort:(() => { try { return localStorage.getItem('pdx-sort') || 'num'; } catch(e){ return 'num'; } })()},
   lastVisible:[], lastForms:[], avEdit:'', avKind:'', sheetSid:null, sheetShiny:false, sheetForm:null, sheetFem:false, femDone:false, editGame:null
 };
 const ename = e => S.ov.names[e.key] || e.raw;
@@ -403,6 +420,14 @@ function formAvail(gid, e){
   return formDefault(gameById(gid), e);
 }
 // Un Pokémon est dans un jeu si au moins une de ses formes NON masquées y est dispo
+/* Exclusivités de version : comparaison en lecture seule des dispos entre versions jumelles (même champ PokéAPI) */
+function partners(gid){
+  const g = gameById(gid); if(!g || !g.vg) return [];
+  return S.games.filter(x => x.id !== gid && x.vg === g.vg && S.avail[x.id] && S.avail[x.id].size).map(x => x.id);
+}
+const formExcl = (gid, e, ps) => formAvail(gid, e) && !ps.some(p => formAvail(p, e));
+function spExcl(gid, sp, ps = partners(gid)){ return ps.length > 0 && sp.f.some(e => !S.ov.hidden[e.key] && formExcl(gid, e, ps)); }
+function exclOnly(gid, l){ if(!S.view.excl) return l; const ps = partners(gid); const x = l.filter(e => !ps.some(p => formAvail(p, e))); return x.length ? x : l; }
 function inGame(gid, sp){ const av = S.avail[gid]; return !!(av && av.has(sp.i) && sp.f.some(e => !S.ov.hidden[e.key] && formAvail(gid, e))); }
 function setSpeciesAvail(gid, sp, want){
   const g = gameById(gid);
@@ -621,6 +646,15 @@ function renderFilters(){
   $('#fGame').innerHTML = '<option value="">Tous les jeux</option>' +
     S.games.filter(g => S.avail[g.id] && S.avail[g.id].size).map(g => `<option value="${g.id}" ${g.id === cur ? 'selected' : ''}>Dispo : ${esc(g.n)}</option>`).join('');
   if(cur && !$('#fGame').value) S.view.game = '';
+  const ps = S.view.game ? partners(S.view.game) : [], xb = $('#fExcl');
+  if(!ps.length){ S.view.excl = false; xb.hidden = true; }
+  else {
+    const g = gameById(S.view.game);
+    const n = S.species.filter(sp => (!S.view.gen || sp.g === S.view.gen) && spExcl(g.id, sp, ps)).length;
+    xb.hidden = false; xb.classList.toggle('on', S.view.excl);
+    xb.textContent = `Exclusifs ${g.a} (${n})`;
+    xb.title = `Dispo dans ${g.n} mais pas dans ${ps.map(id => gameById(id).n).join(' / ')}`;
+  }
   if(S.isAdmin){
     if(S.avEdit && !gameById(S.avEdit)) S.avEdit = '';
     $('#aAv').innerHTML = '<option value="">✏️ Éditer la dispo par jeu…</option>' + S.games.map(g => `<option value="${g.id}" ${g.id === S.avEdit ? 'selected' : ''}>✏️ Dispo : ${esc(g.n)}</option>`).join('');
@@ -631,11 +665,11 @@ function spEntries(sp){
   const gid = S.view.game, k = S.view.kind, edit = S.adminMode && S.avEdit;
   if(k && !edit){
     const l = kindForms(sp, k);
-    return gid ? l.filter(e => formAvail(gid, e)) : l;
+    return gid ? exclOnly(gid, l.filter(e => formAvail(gid, e))) : l;
   }
   const l = sp.f.filter(isTracked);
   if(!gid || edit) return l;
-  const a = l.filter(e => formAvail(gid, e));
+  const a = exclOnly(gid, l.filter(e => formAvail(gid, e)));
   return a.length ? a : l;
 }
 function statusOk(sp){
@@ -658,10 +692,12 @@ function visibleSpecies(){
   const qn = /^#?\d+$/.test(q) ? +q.replace('#', '') : null;
   const av = S.view.game ? S.avail[S.view.game] : null;
   const ty = S.view.type === '' ? null : +S.view.type;
+  const exPs = S.view.game && S.view.excl ? partners(S.view.game) : [];
   const out = [];
   for(const sp of S.species){
     if(S.view.gen && sp.g !== S.view.gen) continue;
     if(av && !inGame(S.view.game, sp)) continue;
+    if(av && S.view.excl && !spExcl(S.view.game, sp, exPs)) continue;
     if(qn !== null && sp.i !== qn) continue;
     const l = spEntries(sp);
     if(S.view.kind && (S.adminMode && S.avEdit ? !kindForms(sp, S.view.kind).length : !l.length)) continue;
@@ -670,7 +706,17 @@ function visibleSpecies(){
     if(!statusOk(sp)) continue;
     out.push(sp);
   }
-  return out;
+  return sortSpecies(out);
+}
+// Tri : numéro, nom, ou avancement (le moins de formes manquantes d'abord, les complets à la fin)
+function sortSpecies(list){
+  const s = S.view.sort;
+  if(s === 'name') return list.sort((a, b) => a.n.localeCompare(b.n, 'fr') || a.i - b.i);
+  if(s === 'prog'){
+    const k = new Map(list.map(sp => { const u = spUnits(spEntries(sp)); const m = u.n - u.c; return [sp, [m > 0 ? m : Infinity, u.n ? u.c / u.n : 0]]; }));
+    return list.sort((a, b) => { const x = k.get(a), y = k.get(b); return x[0] - y[0] || y[1] - x[1] || a.i - b.i; });
+  }
+  return list;
 }
 // Images affichées par la carte : formes retenues par les filtres (type de forme, jeu, statut), ♂ et ♀ séparés
 function cardFrames(sp){
@@ -872,8 +918,11 @@ function saveSettings(){ updateDoc(uref(), {settings:S.settings}).catch(() => to
 $('#gens').addEventListener('click', ev => { const b = ev.target.closest('.gen'); if(!b) return; S.view.gen = +b.dataset.g; renderGens(); renderGrid(); window.scrollTo({top:0}); });
 $('#fStatus').addEventListener('click', ev => { const b = ev.target.closest('.chip'); if(!b) return; S.view.status = b.dataset.s; renderFilters(); renderGrid(); });
 let qT; $('#q').addEventListener('input', ev => { clearTimeout(qT); qT = setTimeout(() => { S.view.q = ev.target.value; renderGrid(); }, 150); });
-$('#fGame').addEventListener('change', ev => { S.view.game = ev.target.value; renderGrid(); });
+$('#fGame').addEventListener('change', ev => { S.view.game = ev.target.value; S.view.excl = false; renderFilters(); renderGrid(); });
+$('#fExcl').addEventListener('click', () => { S.view.excl = !S.view.excl; renderFilters(); renderGrid(); });
 $('#fType').addEventListener('change', ev => { S.view.type = ev.target.value; renderGrid(); });
+$('#fSort').value = S.view.sort;
+$('#fSort').addEventListener('change', ev => { S.view.sort = ev.target.value; try { localStorage.setItem('pdx-sort', S.view.sort); } catch(e){} renderGrid(); window.scrollTo({top:0}); });
 $('#fKind').addEventListener('change', ev => { S.view.kind = ev.target.value; renderGrid(); });
 $('#grid').addEventListener('click', ev => {
   const card = ev.target.closest('.card'); if(!card) return;
@@ -973,8 +1022,10 @@ function renderSheet(){
   const chips = S.games.map(g => {
     const on = inGame(g.id, sp);
     if(!on && !S.adminMode) return '';
-    return `<button class="gchip ${on ? 'on' : ''}" style="--gc:${g.c}" ${S.adminMode ? `data-a="av" data-g="${g.id}"` : 'disabled'} title="${esc(g.n)}">${esc(g.a)}</button>`;
+    const ex = on && spExcl(g.id, sp);
+    return `<button class="gchip ${on ? 'on' : ''}${ex ? ' ex' : ''}" style="--gc:${g.c}" ${S.adminMode ? `data-a="av" data-g="${g.id}"` : 'disabled'} title="${esc(g.n)}${ex ? ' · exclusif à cette version' : ''}">${esc(g.a)}${ex ? '<small>exclu</small>' : ''}</button>`;
   }).join('');
+  h += evoHtml(sp);
   h += `<div class="sec">Disponible dans${S.adminMode ? ' <span style="color:var(--red)">· touche pour modifier</span>' : ''}</div><div class="gchips">${chips || '<span class="mute sm" style="font-weight:700">Aucun jeu renseigné</span>'}</div>`;
   $('#sheet').innerHTML = h;
 }
@@ -988,6 +1039,7 @@ $('#ovSheet').addEventListener('click', ev => {
   else if(a === 'next') navSheet(1);
   else if(a === 'shiny'){ S.sheetShiny = !S.sheetShiny; renderSheet(); }
   else if(a === 'sexv'){ S.sheetFem = b.dataset.v === '1'; renderSheet(); }
+  else if(a === 'evo'){ const sid = +b.dataset.s; if(sid !== S.sheetSid && S.bySid[sid]){ S.sheetSid = sid; S.sheetForm = null; S.sheetFem = false; renderSheet(); $('#sheet').scrollTop = 0; } }
   else if(a === 'sel'){ if(S.sheetForm !== b.dataset.k){ S.sheetForm = b.dataset.k; renderSheet(); } }
   else if(a === 'sx'){ setSex(b.dataset.k, b.dataset.f); if(b.dataset.f === 'f' && (S.prog[b.dataset.k] || {}).f) S.sheetFem = true; else if(b.dataset.f === 'm' && (S.prog[b.dataset.k] || {}).m) S.sheetFem = false; renderSheet(); }
   else if(a === 'tg'){ const p = S.prog[b.dataset.k] || {}; setFlag(b.dataset.k, b.dataset.f, p[b.dataset.f] ? 0 : 1); renderSheet(); }
@@ -1014,6 +1066,46 @@ document.addEventListener('keydown', ev => {
   else if(ev.key === 'ArrowLeft') navSheet(-1);
   else if(ev.key === 'Escape') closeSheet();
 });
+
+/* ---------- Lignée d'évolution (PokéAPI, gardée en mémoire sur l'appareil) ---------- */
+const EVO = (() => { try { return JSON.parse(localStorage.getItem('pdx-evo-v1')) || {s:{}, c:{}}; } catch(e){ return {s:{}, c:{}}; } })();
+const evoLoading = new Set();
+function evoSave(){ try { localStorage.setItem('pdx-evo-v1', JSON.stringify(EVO)); } catch(e){} }
+async function loadEvo(sid){
+  if(evoLoading.has(sid)) return;
+  evoLoading.add(sid);
+  try {
+    const s = await jget(API + 'pokemon-species/' + sid);
+    const cid = s && s.evolution_chain ? idFromUrl(s.evolution_chain.url) : 0;
+    if(cid && !EVO.c[cid]){
+      const ch = await jget(API + 'evolution-chain/' + cid);
+      const stages = [];
+      (function walk(n, d){ if(!n) return; (stages[d] = stages[d] || []).push(idFromUrl(n.species.url)); (n.evolves_to || []).forEach(x => walk(x, d + 1)); })(ch && ch.chain, 0);
+      EVO.c[cid] = stages;
+    }
+    if(cid) for(const st of EVO.c[cid]) for(const x of st) EVO.s[x] = cid;
+    else EVO.s[sid] = 0;
+    evoSave();
+  } catch(e){ EVO.err = true; }
+  evoLoading.delete(sid);
+  if(S.sheetSid === sid) renderSheet();
+}
+function evoHtml(sp){
+  const cid = EVO.s[sp.i];
+  if(cid === undefined){
+    if(!EVO.err) loadEvo(sp.i);
+    return `<div class="sec">Évolutions</div><div class="mute sm" style="font-weight:700">${EVO.err ? 'Lignée indisponible (pas de connexion à PokéAPI)' : 'Chargement…'}</div>`;
+  }
+  const stages = (EVO.c[cid] || []).map(st => st.map(x => S.bySid[x]).filter(Boolean)).filter(st => st.length);
+  if(stages.reduce((n, st) => n + st.length, 0) < 2) return '';
+  const chip = x => {
+    const u = spUnits(x.f.filter(isTracked));
+    const cls = u.c ? (u.c === u.n ? 'got full' : 'got') : 'miss';
+    return `<button class="ev ${cls}${x.i === sp.i ? ' cur' : ''}" data-a="evo" data-s="${x.i}" title="${esc(x.n)}${u.n > 1 ? ` · ${u.c}/${u.n}` : ''}">` +
+      `<img crossorigin="anonymous" src="${sprUrl(x.f[0], false)}" data-fb="${artUrl(x.f[0], false)}" onerror="${FB}" alt="">${esc(x.n)}</button>`;
+  };
+  return `<div class="sec">Évolutions</div><div class="evo">` + stages.map(st => `<div class="evs">${st.map(chip).join('')}</div>`).join('<span class="evarr">→</span>') + `</div>`;
+}
 
 /* ---------- Admin : fiches ---------- */
 async function renameForm(key){
@@ -1289,6 +1381,13 @@ function renderStats(){
       h += srow(esc(g.a), c, n, g.c);
     }
   }
+  const exl = S.games.map(g => {
+    const ps = partners(g.id); if(!ps.length) return null;
+    let c = 0, n = 0;
+    for(const sp of S.species){ if(!spExcl(g.id, sp, ps)) continue; n++; if(sp.f.some(e => (S.prog[e.key] || {}).c)) c++; }
+    return n ? srow(esc(g.a) + ' · exclu', c, n, g.c) : null;
+  }).filter(Boolean);
+  if(exl.length) h += `<div class="sec">Exclusivités de version (espèces capturées)</div>` + exl.join('');
   const byGame = {}; for(const k in S.prog){ const g = S.prog[k].g; if(g) byGame[g] = (byGame[g] || 0) + 1; }
   const used = S.games.filter(g => byGame[g.id]);
   if(used.length){
