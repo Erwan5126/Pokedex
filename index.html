@@ -355,7 +355,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.32";
+const APP_V = "1.33";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -1238,6 +1238,7 @@ function bxOpts(){
   BX = o || {gen:0, one:false, k:{fem:true, regional:!!S.settings.kinds.regional, alt:!!S.settings.kinds.alt}};
   if(BX.k.gmax === undefined) BX.k.gmax = true;
   if(BX.k.mega === undefined) BX.k.mega = true;
+  if(BX.shiny === undefined) BX.shiny = true;
   return BX;
 }
 function bxSave(){ try { localStorage.setItem('pdx-box', JSON.stringify(BX)); } catch(e){} }
@@ -1278,25 +1279,45 @@ function boxSections(){
       }
     }
   }
+  // Boîtes shiny : toutes générations regroupées (ou la génération choisie), shiny capturés uniquement, par n° de Pokédex puis ordre des formes
+  if(o.shiny){
+    const sh = [];
+    for(const sp of S.species){
+      if(o.gen && sp.g !== o.gen) continue;
+      for(const e of byOrder(sp.f)){
+        if(S.ov.hidden[e.key] || e.key.includes('-totem')) continue;
+        if(e.kind !== 'base' && o.k[e.kind] === false) continue;
+        const p = S.prog[e.key] || {};
+        if(p.s) sh.push({sp, spr:e.spr, n:bname(e), got:true, sh:true});
+      }
+    }
+    const nb = Math.ceil(sh.length / 30);
+    for(let b = 0; b < nb; b++){
+      const part = sh.slice(b * 30, b * 30 + 30);
+      out.push({title:`✨ Shiny · Boîte ${b + 1}`, range:true, shiny:true, slots:part});
+    }
+  }
   return out;
 }
 function boxSlots(){ return boxSections().flatMap(b => b.slots); }
 function openBoxes(){ $('#boxes').hidden = false; document.body.style.overflow = 'hidden'; renderBoxes(); $('#boxes').scrollTop = 0; }
 function closeBoxes(){ $('#boxes').hidden = true; if(!S.sheetSid && !$('#ovModal').classList.contains('show')) document.body.style.overflow = ''; }
 function renderBoxes(){
-  const o = bxOpts(), bxs = boxSections(), sl = bxs.flatMap(b => b.slots), got = sl.filter(s => s.got).length, nb = bxs.length;
+  const o = bxOpts(), bxs = boxSections(), sl = bxs.filter(b => !b.shiny).flatMap(b => b.slots), got = sl.filter(s => s.got).length, nb = bxs.length;
+  const shN = bxs.filter(b => b.shiny).reduce((n, b) => n + b.slots.length, 0);
   $('#bxBar').innerHTML = `<div class="h1">📦 Boîtes HOME</div>` +
     `<button class="btn pri" data-bx="print">🖨️ PDF / Imprimer</button><button class="ib" data-bx="close" title="Fermer">✕</button>` +
     `<div class="bxopt"><select data-bx="gen"><option value="0">Toutes les générations</option>${S.gens.map(g => `<option value="${g}" ${o.gen === g ? 'selected' : ''}>Gen ${g} · ${genName(g)}</option>`).join('')}</select>` +
     `<label><input type="checkbox" data-bx="one" ${o.one ? 'checked' : ''}> Une case par espèce</label>` +
+    `<label><input type="checkbox" data-bx="shiny" ${o.shiny ? 'checked' : ''}> ✨ Boîtes shiny</label>` +
     BOXK.map(([k, l]) => `<label style="${o.one ? 'opacity:.4' : ''}"><input type="checkbox" data-bx="k" data-k="${k}" ${o.k[k] ? 'checked' : ''} ${o.one ? 'disabled' : ''}> ${l}</label>`).join('') + `</div>`;
-  let h = `<div class="bxsum">${sl.length} cases · ${got} déjà rangées · ${sl.length - got} à laisser vides (pointillés) · ${nb} boîte${nb > 1 ? 's' : ''}</div><div class="bxs">`;
+  let h = `<div class="bxsum">${sl.length} cases · ${got} déjà rangées · ${sl.length - got} à laisser vides (pointillés)${o.shiny ? ` · ✨ ${shN} shiny` : ''} · ${nb} boîte${nb > 1 ? 's' : ''}</div><div class="bxs">`;
   for(let b = 0; b < nb; b++){
     const part = bxs[b].slots;
     h += `<div class="box"><h3><span>${esc(bxs[b].title)}</span><span>${bxs[b].range ? `#${pad(part[0].sp.i)} → #${pad(part[part.length - 1].sp.i)} · ` : ''}${part.filter(s => s.got).length}/${part.length}</span></h3><div class="bgrid">`;
     for(let i = 0; i < 30; i++){
       const s = part[i];
-      h += s ? `<div class="slot${s.got ? '' : ' miss'}" title="Case ${i + 1} : ${esc(s.n)}${s.sx ? ' ' + s.sx : ''}"><img loading="lazy" crossorigin="anonymous" src="${sprUrl({spr:s.spr}, false)}" data-fb="${artUrl({spr:s.spr}, false)}" onerror="${FB}" alt=""><div class="sx">${pad(s.sp.i)}${s.sx ? ` <b style="font-family:Nunito,sans-serif;font-size:10px;color:${s.sx === '♀' ? '#f472b6' : '#60a5fa'}">${s.sx}</b>` : ''}</div><div class="sn">${esc(s.n)}</div></div>` : `<div class="slot void"></div>`;
+      h += s ? `<div class="slot${s.got ? '' : ' miss'}" title="Case ${i + 1} : ${esc(s.n)}${s.sx ? ' ' + s.sx : ''}"><img loading="lazy" crossorigin="anonymous" src="${sprUrl({spr:s.spr}, !!s.sh)}" data-fb="${artUrl({spr:s.spr}, !!s.sh)}" onerror="${FB}" alt=""><div class="sx">${pad(s.sp.i)}${s.sx ? ` <b style="font-family:Nunito,sans-serif;font-size:10px;color:${s.sx === '♀' ? '#f472b6' : '#60a5fa'}">${s.sx}</b>` : ''}</div><div class="sn">${esc(s.n)}</div></div>` : `<div class="slot void"></div>`;
     }
     h += `</div></div>`;
   }
@@ -1306,6 +1327,7 @@ $('#bxBar').addEventListener('change', ev => {
   const t = ev.target, o = bxOpts();
   if(t.dataset.bx === 'gen') o.gen = +t.value;
   else if(t.dataset.bx === 'one') o.one = t.checked;
+  else if(t.dataset.bx === 'shiny') o.shiny = t.checked;
   else if(t.dataset.bx === 'k') o.k[t.dataset.k] = t.checked;
   else return;
   bxSave(); renderBoxes();
@@ -1389,7 +1411,7 @@ function achDefs(){
     const ps = partners(g.id);
     if(ps.length){ const x = spAll.filter(sp => spExcl(g.id, sp, ps)); add('Jeux', 'excl-' + g.id, '🔒', `Exclusivités : ${g.n}`, `Toutes les exclusivités de ${g.n} capturées`, cnt(x, spCap), [], x.length); }
   }
-  const bxs = boxSections(), nb = bxs.length;
+  const bxs = boxSections().filter(b => !b.shiny), nb = bxs.length;
   let full = 0; for(const bx of bxs) if(bx.slots.every(s => s.got)) full++;
   add('Jeux', 'boxes', '📦', 'Boîtes HOME', 'Boîtes entièrement remplies (selon tes options de la vue Boîtes)', full, [1, 10], nb);
   return D;
