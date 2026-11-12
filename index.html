@@ -355,7 +355,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.31";
+const APP_V = "1.32";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -370,12 +370,12 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 const API = 'https://pokeapi.co/api/v2/';
 const SPR = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
 const GEN = {1:'Kanto',2:'Johto',3:'Hoenn',4:'Sinnoh',5:'Unys',6:'Kalos',7:'Alola',8:'Galar',9:'Paldea'};
-const KINDS = {base:'Base',regional:'Régionale',mega:'Méga',gmax:'Gigamax',alt:'Alternative',cosm:'Cosmétique'};
+const KINDS = {base:'Base',regional:'Régionale',mega:'Méga',gmax:'Gigamax',alt:'Alternative'};
 const TYPES = ['normal','fighting','flying','poison','ground','rock','bug','ghost','steel','fire','water','grass','electric','psychic','ice','dragon','dark','fairy'];
 const TYPE_FR = ['Normal','Combat','Vol','Poison','Sol','Roche','Insecte','Spectre','Acier','Feu','Eau','Plante','Électrik','Psy','Glace','Dragon','Ténèbres','Fée'];
 const TYPE_C = ['#9fa19f','#ff8000','#81b9ef','#9141cb','#915121','#afa981','#91a119','#704170','#60a1b8','#e62829','#2980ef','#3fa129','#e0ad00','#ef4179','#3dcef3','#5060e1','#624d4e','#ef70ef'];
 const STATUS = [['all','Tous'],['miss','Manquants'],['part','Incomplets'],['c','Capturés'],['full','Complets ★'],['nos','Shiny manquants'],['s','Shiny'],['noiv','IV manquants']];
-const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true,cosm:false},showForms:true,carousel:true,theme:'dark'};
+const DEF_SET = {kinds:{regional:true,mega:true,gmax:true,alt:true},showForms:true,carousel:true,theme:'dark'};
 // Thème : sombre, clair ou automatique (selon l'appareil) ; mémorisé aussi sur l'appareil pour éviter un flash au chargement
 const lightMQ = matchMedia('(prefers-color-scheme: light)');
 function applyTheme(){
@@ -656,7 +656,7 @@ function buildCatalog(docs){
     for(let f of sp.f){
       if(f.d === 'fem' || S.byKey[f.k] || (f.d !== 'base' && femRe.test(f.k))) continue;
       if(fe && f.d === 'base') f = {...f, n:String(f.n).replace(/\s*♂$/, '')};
-      const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null, nw:f.nw || null};
+      const e = {key:f.k, raw:f.n, kind:(f.d === 'cosm' ? 'alt' : f.d), spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null, nw:f.nw || null};
       s.f.push(e); S.byKey[f.k] = e; own[f.k] = e;
     }
     if(fe && s.f[0]){ s.f[0].fem = fe.s; s.f[0].femKey = fe.k; }
@@ -667,7 +667,7 @@ function buildCatalog(docs){
       let m = cands.map(c => own[c]).find(Boolean);
       if(!m && /-(female|f)$/.test(f.k) && s.f[0]) m = s.f[0];
       if(m && !m.fem){ m.fem = f.s; m.femKey = f.k; if(m.kind !== 'base') m.raw = String(m.raw).replace(/\s*(mâle|male|♂)\s*$/i, '').trim(); }
-      else { const e = {key:f.k, raw:f.n, kind:f.d, spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null, nw:f.nw || null}; s.f.push(e); S.byKey[f.k] = e; }
+      else { const e = {key:f.k, raw:f.n, kind:(f.d === 'cosm' ? 'alt' : f.d), spr:f.s, t:f.t || null, sp:s, fem:f.fs || null, femKey:null, o:f.o ?? null, nw:f.nw || null}; s.f.push(e); S.byKey[f.k] = e; }
     }
     if(s.f.length){ S.species.push(s); S.bySid[s.i] = s; }
   }
@@ -735,7 +735,7 @@ function buildStatic(){
   $('#fStatus').innerHTML = STATUS.map(([k, l]) => `<button class="chip" data-s="${k}">${l}</button>`).join('');
   $('#fType').innerHTML = '<option value="">Tous les types</option>' + TYPE_FR.map((t, i) => `<option value="${i}">${t}</option>`).join('');
 }
-// Ordre des formes : base / alternatives / cosmétiques (ordre officiel entre elles), puis régionales, puis Méga, puis Gigamax
+// Ordre des formes : base / alternatives (ordre officiel entre elles ; les cosmétiques PokéAPI sont fusionnées dans les alternatives), puis régionales, puis Méga, puis Gigamax
 const KIND_RANK = {regional:1, mega:2, gmax:3};
 const genName = g => GEN[g] || (S.genName || {})[g] || '';
 function byOrder(l){
@@ -1230,21 +1230,21 @@ function evoHtml(sp){
 }
 
 /* ---------- Boîtes HOME : rangement 30 par 30 + impression / PDF ---------- */
-const BOXK = [['fem','Femelles ♀'], ['regional','Régionales'], ['gmax','Gigamax'], ['mega','Méga (case réservée)'], ['alt','Alternatives'], ['cosm','Cosmétiques']];
+const BOXK = [['fem','Femelles ♀'], ['regional','Régionales'], ['gmax','Gigamax'], ['mega','Méga (case réservée)'], ['alt','Alternatives']];
 let BX = null;
 function bxOpts(){
   if(BX) return BX;
   let o = null; try { o = JSON.parse(localStorage.getItem('pdx-box')); } catch(e){}
-  BX = o || {gen:0, one:false, k:{fem:true, regional:!!S.settings.kinds.regional, alt:!!S.settings.kinds.alt, cosm:!!S.settings.kinds.cosm}};
+  BX = o || {gen:0, one:false, k:{fem:true, regional:!!S.settings.kinds.regional, alt:!!S.settings.kinds.alt}};
   if(BX.k.gmax === undefined) BX.k.gmax = true;
   if(BX.k.mega === undefined) BX.k.mega = true;
   return BX;
 }
 function bxSave(){ try { localStorage.setItem('pdx-box', JSON.stringify(BX)); } catch(e){} }
 // Rangement par génération, chaque catégorie démarre une nouvelle boîte :
-// formes de base (♂) → femelles ♀ → alternatives → régionales (Alola, Galar, Hisui, Paldea) → Méga → Gigamax → cosmétiques.
+// formes de base (♂) → femelles ♀ → alternatives → régionales (Alola, Galar, Hisui, Paldea) → Méga → Gigamax.
 // Les formes avec ♂/♀ autres que la base (ex. Méga-Mistigrix) gardent ♂ puis ♀ côte à côte dans leur catégorie.
-const BX_SECT = [['base',''], ['fem','femelles'], ['alt','alternatives'], ['regional','régionales'], ['mega','Méga'], ['gmax','Gigamax'], ['cosm','cosmétiques']];
+const BX_SECT = [['base',''], ['fem','femelles'], ['alt','alternatives'], ['regional','régionales'], ['mega','Méga'], ['gmax','Gigamax']];
 const BX_REG = ['alola', 'galar', 'hisui', 'paldea'];
 const regIdx = e => { const r = (e.key.match(/-(alola|galar|hisui|paldea)(-|$)/) || [])[1]; const i = BX_REG.indexOf(r); return i < 0 ? 9 : i; };
 function boxSections(){
@@ -1355,8 +1355,8 @@ function achDefs(){
   }
   add('Progression', 'allgens', '🌍', 'Maître des régions', 'Toutes les générations complétées', gensDone, [], S.gens.length);
   // Formes
-  const ac = vis.filter(e => e.kind === 'alt' || e.kind === 'cosm');
-  add('Formes', 'forms', '🔀', 'Polymorphe', 'Formes alternatives et cosmétiques capturées', cnt(ac, capF), [50, 150], ac.length);
+  const ac = vis.filter(e => e.kind === 'alt');
+  add('Formes', 'forms', '🔀', 'Polymorphe', 'Formes alternatives capturées', cnt(ac, capF), [50, 150], ac.length);
   const regs = {};
   for(const e of vis) if(e.kind === 'regional'){ const r = regionOf(e.key); if(r) (regs[r] = regs[r] || []).push(e); }
   for(const r of Object.keys(regs).sort((a, b) => ((S.regionGen || {})[a] || REG_GEN[a] || 99) - ((S.regionGen || {})[b] || REG_GEN[b] || 99)))
@@ -1746,7 +1746,7 @@ function renderSettings(){
   const th = S.settings.theme || 'dark';
   h += `<div class="sec">Affichage</div><label class="chk">Thème <select data-set="theme" style="margin-left:auto">${[['dark','Sombre'],['light','Clair'],['auto','Automatique (selon l\'appareil)']].map(([v, l]) => `<option value="${v}" ${th === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label><label class="chk"><input type="checkbox" data-set="carousel" ${S.settings.carousel !== false ? 'checked' : ''}> Faire défiler les formes sur les cartes <span class="mute sm" style="margin-left:auto">sinon au survol</span></label>`;
   h += `<div class="sec">Formes suivies</div><p class="mute sm" style="margin-top:0;font-weight:600">Les formes cochées apparaissent dans les fiches et comptent dans tes statistiques et dans le compteur de formes des cartes.</p>`;
-  for(const k of ['regional','mega','gmax','alt','cosm']){
+  for(const k of ['regional','mega','gmax','alt']){
     const n = Object.values(S.byKey).filter(e => e.kind === k && !S.ov.hidden[e.key]).length;
     h += `<label class="chk"><input type="checkbox" data-kind="${k}" ${S.settings.kinds[k] ? 'checked' : ''}> ${KINDS[k]} <span class="mute sm" style="margin-left:auto">${n}</span></label>`;
   }
