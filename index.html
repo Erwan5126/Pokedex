@@ -355,7 +355,7 @@ const FIREBASE_CONFIG = {
   appId: "1:143250667449:web:583416357520d3bce96868"
 };
 const ADMIN_UID = "TjENT7mexlVP5tkuYkUADpHkD9j1"; // ton UID, visible dans ⚙️ Réglages une fois connecté
-const APP_V = "1.33";
+const APP_V = "1.35";
 /* ===================================================================== */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
@@ -967,8 +967,9 @@ function refreshCard(key){
 function setFlag(key, field, val){
   const cur = {...(S.prog[key] || {})};
   if(val) cur[field] = val; else delete cur[field];
-  if(val && field !== 'c') cur.c = 1;
-  if(field === 'c' && !val) for(const f of ['s','iv','h','g','m','f']) delete cur[f];
+  // Le shiny est indépendant : cocher ✨ ne coche pas la forme classique, et décocher la forme classique garde le shiny
+  if(val && field !== 'c' && field !== 's') cur.c = 1;
+  if(field === 'c' && !val) for(const f of ['iv','h','g','m','f']) delete cur[f];
   if(Object.keys(cur).length) S.prog[key] = cur; else delete S.prog[key];
   updateDoc(uref(), new FieldPath('p', key), S.prog[key] ? S.prog[key] : deleteField())
     .catch(err => { console.error(err); toast('Erreur de sauvegarde'); });
@@ -991,7 +992,7 @@ function migrateFem(){
 function setSex(key, sx){
   const cur = {...(S.prog[key] || {})};
   if(cur[sx]) delete cur[sx]; else { cur[sx] = 1; cur.c = 1; }
-  if(!cur.m && !cur.f && (sx === 'm' || sx === 'f') && !cur[sx]){ for(const k of ['c','s','iv','h','g']) delete cur[k]; }
+  if(!cur.m && !cur.f && (sx === 'm' || sx === 'f') && !cur[sx]){ for(const k of ['c','iv','h','g']) delete cur[k]; }
   if(Object.keys(cur).length) S.prog[key] = cur; else delete S.prog[key];
   updateDoc(uref(), new FieldPath('p', key), S.prog[key] ? S.prog[key] : deleteField())
     .catch(err => { console.error(err); toast('Erreur de sauvegarde'); });
@@ -1000,7 +1001,7 @@ function setSex(key, sx){
 async function bulkCapture(mode){
   const list = S.lastVisible; if(!list.length) return;
   const label = {base:'Cocher la forme affichée des', all:'Cocher toutes les formes suivies des', none:'Tout décocher pour les'}[mode];
-  if(!confirm(`${label} ${list.length} Pokémon affichés ?` + (mode === 'none' ? '\nShiny, IV et jeu de capture seront aussi effacés.' : '\nTu pourras ensuite décocher ceux qui te manquent.'))) return;
+  if(!confirm(`${label} ${list.length} Pokémon affichés ?` + (mode === 'none' ? '\nIV et jeu de capture seront aussi effacés (les shiny sont conservés).' : '\nTu pourras ensuite décocher ceux qui te manquent.'))) return;
   const ups = [];
   for(const sp of list){
     let targets;
@@ -1009,7 +1010,7 @@ async function bulkCapture(mode){
     for(const e of targets){
       const old = S.prog[e.key];
       let nv;
-      if(mode === 'none') nv = null;
+      if(mode === 'none') nv = old && old.s ? {s:1} : null;
       else { nv = {...(old || {}), c:1}; if(e.fem){ nv.m = 1; nv.f = 1; } }
       if(JSON.stringify(old || null) === JSON.stringify(nv)) continue;
       if(nv) S.prog[e.key] = nv; else delete S.prog[e.key];
@@ -1059,7 +1060,7 @@ $('#grid').addEventListener('click', ev => {
     const kl = S.view.kind ? spEntries(sp) : null;
     if(kl && kl.length !== 1) return openSheet(sp.i);
     const base = kl ? kl[0] : sp.f[0], p = S.prog[base.key] || {};
-    if(p.c && (p.s || p.iv || p.h || p.g) && !confirm(`Retirer ${ename(base)} de ta collection ? Shiny, IV et jeu seront effacés.`)) return;
+    if(p.c && (p.iv || p.g) && !confirm(`Retirer ${ename(base)} de ta collection ? IV et jeu seront effacés (le shiny est conservé).`)) return;
     setFlag(base.key, 'c', p.c ? 0 : 1);
     return;
   }
@@ -1230,22 +1231,22 @@ function evoHtml(sp){
 }
 
 /* ---------- Boîtes HOME : rangement 30 par 30 + impression / PDF ---------- */
-const BOXK = [['fem','Femelles ♀'], ['regional','Régionales'], ['gmax','Gigamax'], ['mega','Méga (case réservée)'], ['alt','Alternatives']];
+const BOXK = [['fem','Femelles ♀'], ['regional','Régionales'], ['gmax','Gigamax'], ['alt','Alternatives']];
 let BX = null;
 function bxOpts(){
   if(BX) return BX;
   let o = null; try { o = JSON.parse(localStorage.getItem('pdx-box')); } catch(e){}
   BX = o || {gen:0, one:false, k:{fem:true, regional:!!S.settings.kinds.regional, alt:!!S.settings.kinds.alt}};
   if(BX.k.gmax === undefined) BX.k.gmax = true;
-  if(BX.k.mega === undefined) BX.k.mega = true;
+  BX.k.mega = false; // les Méga ne sont jamais rangées dans les boîtes
   if(BX.shiny === undefined) BX.shiny = true;
   return BX;
 }
 function bxSave(){ try { localStorage.setItem('pdx-box', JSON.stringify(BX)); } catch(e){} }
 // Rangement par génération, chaque catégorie démarre une nouvelle boîte :
-// formes de base (♂) → femelles ♀ → alternatives → régionales (Alola, Galar, Hisui, Paldea) → Méga → Gigamax.
+// formes de base (♂) → femelles ♀ → alternatives → régionales (Alola, Galar, Hisui, Paldea) → Gigamax (pas de Méga).
 // Les formes avec ♂/♀ autres que la base (ex. Méga-Mistigrix) gardent ♂ puis ♀ côte à côte dans leur catégorie.
-const BX_SECT = [['base',''], ['fem','femelles'], ['alt','alternatives'], ['regional','régionales'], ['mega','Méga'], ['gmax','Gigamax']];
+const BX_SECT = [['base',''], ['fem','femelles'], ['alt','alternatives'], ['regional','régionales'], ['gmax','Gigamax']];
 const BX_REG = ['alola', 'galar', 'hisui', 'paldea'];
 const regIdx = e => { const r = (e.key.match(/-(alola|galar|hisui|paldea)(-|$)/) || [])[1]; const i = BX_REG.indexOf(r); return i < 0 ? 9 : i; };
 function boxSections(){
